@@ -1,0 +1,11 @@
+# Arduino / SDK build output
+work/build/
+work/build*/
+*.o
+*.d
+*.a
+*.elf
+*.bin
+*.hex
+*.map
+*.cache
