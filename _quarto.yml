@@ -1,0 +1,26 @@
+project:
+  type: website
+  output-dir: _site
+  resources:
+    - "hints/work/**"
+
+website:
+  title: "CS 4250 — SG2000 Hints"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - text: Hints
+        menu:
+          - hints/setup.md
+          - hints/fishwaldo-arduino.md
+      - text: Boot Slides
+        menu:
+          - boot-slides/index.qmd
+          - boot-slides/refs.md
+  search: true
+
+format:
+  html:
+    theme: cosmo
+    toc: true

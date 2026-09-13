@@ -1,6 +1,6 @@
 # Arduino / SDK build output
-work/build/
-work/build*/
+hints/work/build/
+hints/work/build*/
 *.o
 *.d
 *.a
@@ -9,3 +9,11 @@ work/build*/
 *.hex
 *.map
 *.cache
+
+# Quarto build output
+/.quarto/
+/_site/
+**/*_files/
+boot-slides/*.html
+
+**/*.quarto_ipynb

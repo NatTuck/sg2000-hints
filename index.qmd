@@ -1,0 +1,17 @@
+---
+title: "SG2000 Hints"
+---
+
+Notes and slides for working with the Sophgo SG2000 (Milk-V Duo S) in
+CS 4250 — Computer Architecture.
+
+## Hints
+
+- [Setup](hints/setup.md) — flash the image, enable passwordless SSH and `sudo`.
+- [Running Arduino sketches on the second core](hints/fishwaldo-arduino.md) —
+  build a sketch and load it onto the little C906 core via remoteproc.
+
+## Boot Slides
+
+- [SG2000 Boot Sequence](boot-slides/index.qmd) — from cold silicon to user space.
+- [Boot Sequence — Reference Notes](boot-slides/refs.md) — a condensed version.

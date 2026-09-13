@@ -1,0 +1,54 @@
+/*-- scss:defaults --*/
+
+$presentation-heading-color: #1a4f8b;
+$presentation-heading-font-weight: 600;
+$link-color: #1a4f8b;
+$code-block-font-size: 0.85em;
+
+/*-- scss:rules --*/
+
+.reveal h1,
+.reveal h2 {
+  text-transform: none;
+}
+
+.reveal .slide-number {
+  color: #1a4f8b;
+}
+
+.reveal table {
+  font-size: 0.85em;
+}
+
+/* Slide 10: give the "What it aligns" column room so rows stay one line */
+.reveal .ddr-training table {
+  table-layout: fixed;
+  width: 100%;
+  font-size: 0.75em;
+}
+
+.reveal .ddr-training th:nth-child(1),
+.reveal .ddr-training td:nth-child(1) {
+  width: 18%;
+}
+
+.reveal .ddr-training th:nth-child(2),
+.reveal .ddr-training td:nth-child(2) {
+  width: 40%;
+}
+
+.reveal .ddr-training th:nth-child(3),
+.reveal .ddr-training td:nth-child(3) {
+  width: 42%;
+}
+
+.reveal .footer {
+  font-size: 0.5em;
+  color: #666;
+}
+
+.reveal blockquote {
+  border-left: 4px solid #1a4f8b;
+  padding-left: 1em;
+  font-style: italic;
+}
