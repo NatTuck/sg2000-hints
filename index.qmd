@@ -10,6 +10,9 @@ CS 4250 — Computer Architecture.
 - [Setup](hints/setup.md) — flash the image, enable passwordless SSH and `sudo`.
 - [Running Arduino sketches on the second core](hints/fishwaldo-arduino.md) —
   build a sketch and load it onto the little C906 core via remoteproc.
+- [Physical memory access from a sketch](hints/physical-memory.md) —
+  why the little core is M-mode/physical, and a test plan for raw DRAM and
+  peripheral access.
 
 ## Boot Slides
 
