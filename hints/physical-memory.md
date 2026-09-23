@@ -158,18 +158,16 @@ riscv-none-elf-objdump -d work/build-physmem/PhysMem.ino.elf \
 
 ### 3. Load via remoteproc
 
-Same manual flow as `fishwaldo-arduino.md` step 3:
+Same manual flow as `fishwaldo-arduino.md` step 3 — get the core to `offline`,
+copy the image into `/lib/firmware`, select it by name, then start it:
 
 ```sh
 scp work/build-physmem/PhysMem.ino.elf debian@10.42.0.1:/tmp/physmem.elf
-ssh debian@10.42.0.1 '
-  set -e
-  sudo cp /tmp/physmem.elf /lib/firmware/physmem.elf
-  S=/sys/class/remoteproc/remoteproc0/state
-  if [ "$(cat $S)" = running ]; then echo stop | sudo tee $S; fi
-  echo physmem.elf | sudo tee /sys/class/remoteproc/remoteproc0/firmware
-  echo start | sudo tee $S
-'
+ssh debian@10.42.0.1 'sudo cp /tmp/physmem.elf /lib/firmware/physmem.elf'
+ssh debian@10.42.0.1 'cat /sys/class/remoteproc/remoteproc0/state'   # want: offline
+ssh debian@10.42.0.1 'echo stop | sudo tee /sys/class/remoteproc/remoteproc0/state'
+ssh debian@10.42.0.1 'echo physmem.elf | sudo tee /sys/class/remoteproc/remoteproc0/firmware'
+ssh debian@10.42.0.1 'echo start | sudo tee /sys/class/remoteproc/remoteproc0/state'
 ```
 
 ### 4. Observe from the big core

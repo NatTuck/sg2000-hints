@@ -86,22 +86,28 @@ The `duos` FQBN links the image at `0x9fe00000` / max 2 MB, matching the kernel'
 
 ### 3. Load onto the little core
 
-The `.elf` is not a Linux program — it is bare-metal firmware. Copy it to
-`/lib/firmware` and point remoteproc at it. This works whether the remote is
-currently `running` or `offline`:
+The `.elf` is not a Linux program — it is bare-metal firmware. The core must be
+`offline` before you can change its firmware. See the state:
 
 ```sh
-SKETCH=work/build4/Blink4.ino.elf
-scp "$SKETCH" debian@10.42.0.1:/tmp/sketch.elf
+ssh debian@10.42.0.1 'cat /sys/class/remoteproc/remoteproc0/state'
+```
 
-ssh debian@10.42.0.1 '
-  set -e
-  sudo cp /tmp/sketch.elf /lib/firmware/sketch.elf
-  S=/sys/class/remoteproc/remoteproc0/state
-  if [ "$(cat $S)" = running ]; then echo stop | sudo tee $S; fi
-  echo sketch.elf | sudo tee /sys/class/remoteproc/remoteproc0/firmware
-  echo start | sudo tee $S
-'
+If it prints `running`, stop it (running `stop` when the core is already
+`offline` prints `Invalid argument`, which is expected and harmless):
+
+```sh
+ssh debian@10.42.0.1 'echo stop | sudo tee /sys/class/remoteproc/remoteproc0/state'
+```
+
+Copy the image into `/lib/firmware`, select it by file name (not a path), and
+start it:
+
+```sh
+scp work/build4/Blink4.ino.elf debian@10.42.0.1:/tmp/blink4.elf
+ssh debian@10.42.0.1 'sudo cp /tmp/blink4.elf /lib/firmware/blink4.elf'
+ssh debian@10.42.0.1 'echo blink4.elf | sudo tee /sys/class/remoteproc/remoteproc0/firmware'
+ssh debian@10.42.0.1 'echo start | sudo tee /sys/class/remoteproc/remoteproc0/state'
 ```
 
 ### 4. Verify
