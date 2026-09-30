@@ -1,0 +1,871 @@
+---
+title: "Porting the SG200x Debian Image to the Pine64 Oz64"
+subtitle: "Device tree, AIC8800DC WiFi, and build-time image configuration"
+author: "CS 4250 — Computer Architecture"
+date: today
+format:
+  revealjs:
+    theme: [default, custom.scss]
+    slide-number: true
+    incremental: false
+    controls: true
+    progress: true
+    hash: true
+    center: false
+    code-line-numbers: true
+    chalkboard: true
+    footer: "CS 4250 · Porting a Debian image to the Pine64 Oz64"
+    preview-links: auto
+    fig-align: center
+    width: 1280
+    height: 800
+    margin: 0.08
+---
+
+## Roadmap {.smaller}
+
+This deck walks the actual port of `scpcom/sophgo-sg200x-debian` to the
+**Pine64 Oz64** — an SG2000 board the upstream repo had never targeted.
+
+**Part I — The Repo and the Board**
+
+1. What the image-build repo actually builds
+2. Anatomy of a board config
+3. The Oz64 target: what it reuses from the Duo S
+
+**Part II — The Device Tree (the heart of the port)**
+
+4. The DTB's job, and why the Oz64 boots a "Duo S" tree
+5. The one change that powers the WiFi radio: the GPIO hog
+6. Verifying the DTB is really the Oz64's
+
+**Part III — WiFi Bring-Up (the hard part)**
+
+7. AIC8800DC over SDIO: two independent failures
+8. Firmware blobs and the driver's hard-coded path
+9. The antenna nobody tells you about
+
+**Part IV — Turning It Into an Appliance Image**
+
+10. Build-time configuration (`preconfigure`)
+11. Service-ordering race; per-interface names; deterministic IPv6
+
+**Part V — Build, Flash, Debug**
+
+::: {.notes}
+Set expectations: adding a board is 80% device tree and board config, 20%
+driver/firmware archaeology. The WiFi story is the interesting systems part.
+:::
+
+# Part I — The Repo and the Board
+
+## What This Repo Builds {.smaller}
+
+`scpcom/sophgo-sg200x-debian` produces **Debian images** for Sophgo
+**cv181x / sg200x** boards (Duo S, Duo 256, LicheeRV Nano, NanoKVM, …).
+
+The build is a **container pipeline**:
+
+- A multi-stage `Dockerfile` bakes a `builder` image (toolchains, `mmdebstrap`,
+  `genimage`, Debian build tools).
+- `scripts/Makefile` (+ `configs/chip/<chip>/chip.mk`) drives:
+
+| Target | Produces |
+|---|---|
+| `linux` | `linux-image-*-<board>.deb` (vendor 5.10 kernel + DTB) |
+| `fsbl` | `cvitek-fsbl-<board>.deb` (FSBL + OpenSBI + U-Boot → `fip.bin`) |
+| `osdrv` / `middleware` | vendor kernel modules + ISP/media userspace |
+| `image` | the flashable `*_sd.img.lz4` |
+
+::: {.fragment}
+Everything is selected by **one make variable**: `make BOARD=oz64 image`.
+The `BOARD` name selects a `configs/<board>/` directory and nothing else.
+:::
+
+::: {.notes}
+This is the key mental model: porting a board = authoring a `configs/<board>/`
+directory. The Makefile is board-agnostic; the board directory is not.
+:::
+
+## Anatomy of a Board Config {.smaller}
+
+A board is a directory. For `configs/oz64/` it looks like:
+
+| Path | Role |
+|---|---|
+| `settings.mk` | chip, arch, DDR config, packages, `IMAGE_ADDITIONS` |
+| `dts/cv181x_milkv_duos_sd.dts` | the board **device tree** source |
+| `linux/defconfig` | kernel `.config` (5.10 vendor tree) |
+| `u-boot/defconfig`, `cvitek.h`, `cvi_board_init.c` | U-Boot config |
+| `memmap.py` | DRAM map: ION/heap/FreeRTOS carve-outs |
+| `partition_sd.xml` | on-disk partition table |
+| `logo.jpeg` | boot splash |
+
+::: {.fragment}
+`Makefile` copies the DTS into the kernel tree, builds it, and the board's
+`settings.mk` decides which **addons** (`scripts/addons/*`) get baked into the
+rootfs — WiFi firmware, init scripts, meta-packages, …
+:::
+
+::: {.notes}
+The `IMAGE_ADDITIONS` list in `settings.mk` is effectively the bill of
+materials for the rootfs: `device-key`, `wifi-builtin`, `aic8800-firmware`,
+`load-systemko`, etc. Porting is choosing the right subset.
+:::
+
+## The Oz64 Target: Mostly Recycling {.smaller}
+
+The Oz64 is an **SG2000** board, same SoC family as the **Milk-V Duo S**.
+So `configs/oz64/` starts as a copy of `configs/duos/` with small deltas:
+
+| Setting | Value | Why |
+|---|---|---|
+| `CHIP` | `cv181x` | same SoC family |
+| `ARCH` / `BOOT_CPU` | `riscv` | Oz64 boots the C906 |
+| `DDR_CFG` | `ddr3_1866_x16` | same SiP DRAM |
+| `UBOOT_BOARD` | `milkv_duos_$(STORAGE_TYPE)` | **reuse the Duo S U-Boot/fip** |
+| `ION_SIZE` | `0` (arduino) / `74` (camera) | second-CPU policy |
+
+::: {.fragment}
+The bolded line is the trick: the Oz64 has no upstream U-Boot port, so it
+boots the **Duo S bootloader**, and the "board identity" lives entirely in the
+**kernel device tree**.
+:::
+
+::: {.notes}
+Reusing U-Boot means the extlinux `fdtfile` still says
+`cv181x_milkv_duos_sd.dtb` — which is exactly why we keep that filename for the
+Oz64 DTS. More on that in Part II.
+:::
+
+## What Actually Differs: The Deltas {.smaller}
+
+Compared with `configs/duos/`, the Oz64 config changes exactly these things:
+
+1. **Device tree** — model + WiFi power GPIO (Part II).
+2. **Kernel driver patch** — disable the AIC8800 BT-over-SDIO path.
+3. **Firmware packaging** — add the AIC8800**DC** blobs.
+4. **Board addon list** — drop Duo S-only helpers that are actively wrong
+   on the Oz64.
+
+::: {.fragment}
+Example of "actively wrong": the Duo S `usb-switch` helper drives
+**GPIO 510**, which on the Oz64 is the **WiFi `CHIP_EN`**. Enabling USB host
+mode would switch the radio off. Removed from `configs/oz64/settings.mk`.
+:::
+
+::: {.fragment}
+Also dropped: `ethernet-leds` (Duo S LED sysfs names) and `hciattach-uart`
+(Oz64 BT is SDIO, and disabled).
+:::
+
+::: {.notes}
+Lesson: a copied board config is a minefield of assumptions. Audit every addon
+for pins/names that may alias on the new board.
+:::
+
+# Part II — The Device Tree
+
+## Why the Device Tree Is the Port {.smaller}
+
+Embedded SoCs have **non-discoverable** memory-mapped hardware — no PCIe-style
+enumeration. The kernel cannot find devices by probing; it must be **told**.
+
+::: {.fragment}
+The **DTB** (compiled from `.dts`/`.dtsi`) describes CPUs, memory, and every
+peripheral's register range, interrupts, clocks and GPIOs. It travels:
+**BL2 → OpenSBI → U-Boot → Linux (`a1`)**.
+:::
+
+::: {.fragment}
+So for a board with no dedicated bootloader port, "porting the board" reduces
+to: **give the kernel the right device tree**, and reuse the rest.
+:::
+
+::: {.notes}
+Contrast x86 (ACPI + enumeration). On RISC-V/ARM, if the DT is wrong the kernel
+silently fails to probe hardware — which is exactly what "no WiFi" looks like.
+:::
+
+## Starting From the Duo S Tree {.smaller}
+
+`configs/oz64/dts/cv181x_milkv_duos_sd.dts` is the Duo S tree with a tiny diff.
+The whole WiFi-relevant change is:
+
+```dts
+/ {
+-	model = "Milk-V DuoS";
++	model = "Pine64 Oz64";
+...
+&porta {
+-	wifi_pwr {
++	wifi_chip_en {
+ 		gpio-hog;
+-		gpios = <15 GPIO_ACTIVE_HIGH>;
++		gpios = <30 GPIO_ACTIVE_HIGH>;
+ 		output-high;
+ 	};
+};
+```
+
+::: {.fragment}
+That's it: **renamed model**, and **moved the WiFi power hog from PA15 to
+PA30**. Everything else (MMC, I2C, SPI, CSI/DSI, LEDs, UARTs) is inherited.
+:::
+
+::: {.notes}
+The Duo S DTS also deletes `wifi_pin`/`bt_pin` and enables `i2c1..4`, `spi3`
+(ST7789 panel), `mipi_rx`, `vo`/`mipi_tx`, `wifisd`, `usb`, and UART1-4. Those
+stay; the Oz64 is electrically close enough.
+:::
+
+## The GPIO Hog: Powering the Radio {.smaller}
+
+What is `gpio-hog`? A DT node that tells the **GPIO controller driver** to
+claim a pin and drive it **automatically at probe time**, before any driver
+asks for it.
+
+::: {.fragment}
+```dts
+&porta {
+    wifi_chip_en {
+        gpio-hog;
+        gpios = <30 GPIO_ACTIVE_HIGH>;   /* XGPIOA[30] = pad AUX0 */
+        output-high;
+    };
+};
+```
+:::
+
+::: {.fragment}
+On the Oz64 schematic, the AIC8800DC's **`CHIP_EN` / `WL_REG_ON`** is wired to
+the SG2000 pad **`AUX0` = `XGPIOA[30]`**. The Duo S instead powers its WiFi
+from **PA15** — which on the Oz64 is `SPK_EN`. So the inherited Duo S hog was
+driving a **speaker enable**, and the radio stayed off.
+:::
+
+::: {.notes}
+`output-high` at controller probe means the chip is powered **before the MMC
+subsystem probes `wifisd` (mmc1)** — so the SDIO card enumerates. Asserting the
+GPIO later from userspace instead requires an mmc rescan, because the host
+already probed with no card. The hog avoids that race.
+:::
+
+## Why a Hog and Not a Driver? {.smaller}
+
+An SDIO card is enumerated by the **MMC core at probe**, before userspace
+exists. There is no "WiFi driver" yet to assert a power pin.
+
+::: {.fragment}
+Ordering on this SoC:
+
+1. GPIO controller probes → **hogs applied** → `CHIP_EN` high.
+2. MMC host (`wifisd`, `mmc1`) probes → sees the SDIO card.
+3. Userspace `S25wifimod` later `insmod`s `aic8800_bsp` / `aic8800_fdrv`,
+   which binds to the already-enumerated card.
+:::
+
+::: {.fragment}
+If step 1 is missing (or wrong pin), step 2 sees **no card**, and no amount of
+driver loading helps. This is why the bug presented as "the AIC BSP fails to
+set power state" rather than as a missing driver.
+:::
+
+::: {.notes}
+Observed on a running Oz64: `ls /sys/bus/mmc/devices` contained only `mmc0`
+(the microSD) with the Duo S tree; after the PA30 hog, `mmc1` enumerated
+(`SDIO_ID=C8A1:C08D`) and `wlan0` appeared. The hog shows up as
+`gpio-510 (wifi_chip_en) out hi` in `/sys/kernel/debug/gpio`.
+:::
+
+## Keeping the DTB Filename {.smaller}
+
+Even though the board is "Oz64", the DTS is named
+`cv181x_milkv_duos_sd.dts` — and the built DTB is
+`cv181x_milkv_duos_sd.dtb`.
+
+::: {.fragment}
+Why? Because the **reused Duo S U-Boot** selects its loaded DTB from
+`fdtfile=cvitek/cv181x_milkv_duos_sd.dtb`. If we renamed it, U-Boot would look
+for a DTB that does not exist. Keeping the filename means the Oz64 model and
+its `wifi_chip_en` hog ride along under the Duo S name.
+:::
+
+::: {.fragment}
+The `model` string inside the DTB is what actually changes:
+
+```
+$ strings .../cv181x_milkv_duos_sd.dtb | grep -i oz64
+Pine64 Oz64
+$ strings .../cv181x_milkv_duos_sd.dtb | grep -i wifi_chip_en
+wifi_chip_en
+```
+:::
+
+::: {.notes}
+This is a general trick for boards that "clone" another vendor's boot chain:
+keep identifiers the bootloader expects, override what the kernel reads.
+:::
+
+## What Stays From the Duo S Tree {.smaller}
+
+The rest of the tree is inherited and matters for a usable board:
+
+| Node | Setting | Why it matters |
+|---|---|---|
+| `&wifisd` | `status="okay"`, `sd-uhs-sdr104`, `max-freq=187500000` | SDIO WiFi bus (mmc1) |
+| `&sd` | `no-1-8-v` | microSD signalling |
+| `leds` | `porta 29`, `porte 6/8` | activity / netdev / link |
+| `&usb` | `vbus-gpio = <&portb 6 0>` | USB host power |
+| `&mipi_rx` / `&vo` / `&mipi_tx` | CSI / DSI | camera + panel path |
+| `&uart1..4` | okay | BT UART, console, headers |
+
+::: {.fragment}
+The **kernel defconfig is byte-identical to the Duo S**. The Oz64 port needed
+**no kernel config change** — only the DTB and the out-of-tree WiFi driver.
+:::
+
+::: {.notes}
+That is a strong signal the SG2000 platform support is already complete in the
+vendor kernel; a new board is mostly a data (DT) problem.
+:::
+
+# Part III — WiFi Bring-Up
+
+## AIC8800DC Over SDIO {.smaller}
+
+The Oz64's WiFi/BT is an **AIC8800DC** (2.4 GHz WiFi 6 + BT 5.2) behind the
+**SDIO `mmc1`** host (`wifisd@4320000`).
+
+```text
+  SoC SG2000                AIC8800DC module
+  ┌──────────┐  SDIO (4-bit) ┌───────────────┐
+  │  wifisd  │───────────────│ WLAN + BT     │
+  │  (mmc1)  │  CLK/CMD/D0-3 │               │
+  │  porta30 │───CHIP_EN────▶│ WL_REG_ON     │
+  └──────────┘               └───────────────┘
+```
+
+::: {.fragment}
+Bring-up had **two independent failures**; fixing one without the other still
+left "no WiFi":
+
+1. The **power** pin (`CHIP_EN`) was never asserted → no card on the SDIO bus.
+2. The vendor driver's **BT-over-SDIO** path **wedged the SDIO bus** once the
+   card *was* present.
+:::
+
+::: {.notes}
+Keep these separate in students' minds: (1) is a board/DT problem, (2) is a
+driver build-configuration problem. Debugging means checking the bus, the
+driver, and the firmware independently.
+:::
+
+## Failure 1: The Radio Was Never Powered {.smaller}
+
+Symptom chain on the stock Duo S tree:
+
+```
+aicbsp: aicbsp_set_subsys, subsys: AIC_WIFI, state to: 1
+aicbsp: aicbsp_platform_power_on
+aicbsp: aicbsp_set_subsys, fail to set AIC_WIFI power state to 1
+AICWFDBG(LOGERROR)  rwnx_mod_init, set power on fail!
+```
+
+and `ls /sys/bus/mmc/devices` had **no `mmc1`** — no SDIO card at all.
+
+::: {.fragment}
+Root cause: the driver's "power on" ultimately depends on the **SDIO card
+being present**; with `CHIP_EN` low, the card never enumerated, so BSP init
+failed at the first step.
+:::
+
+::: {.fragment}
+Fix: the `wifi_chip_en` **gpio-hog** on `XGPIOA[30]` from Part II. With the
+pin driven high, `mmc1` enumerates the card and the BSP's power-on succeeds.
+:::
+
+::: {.notes}
+The confusing part: the driver reports a *power* failure, which looks like a
+regulator/DT-regulator problem, when it is really "no card on the bus". The
+gpio-hog is the correct fix because it acts before the MMC probe.
+:::
+
+## Failure 2: BT-over-SDIO Wedges the Bus {.smaller}
+
+With the card powered, `wlan0` was created — then the machine **hung** right
+after `btsdio_init()`:
+
+```
+TDLS_SDIO_BT_SEND_CFM          # lmac_msg id 3089
+aicwf_sdio_hal_irqhandler ... intstatus=ff
+```
+
+The SDIO reads return **`-110` (ETIMEDOUT)** forever; SSH dies (serial console
+survives).
+
+::: {.fragment}
+The vendor driver was built with **`CONFIG_SDIO_BT=y`** — the AIC8800
+Bluetooth-over-SDIO send path. On this DC part/firmware that path wedges the
+shared SDIO bus.
+:::
+
+::: {.fragment}
+Fix: build the driver with **`CONFIG_SDIO_BT=n`** (and **`CONFIG_COEX=n`**),
+as an **OSDRV patch** applied at image build:
+`configs/chip/sg200x/patches/osdrv/0001-aic8800-disable-sdio-bt.patch`.
+:::
+
+::: {.notes}
+Trade-off: Bluetooth is intentionally disabled on this image. Re-enabling it
+needs a different fix, because the BT-over-SDIO path is what hangs the bus.
+Verify the rebuild with `strings aic8800_fdrv.ko | grep -ci btsdio` → 0.
+:::
+
+## A Patch, Not a Fork {.smaller}
+
+The driver lives in `sophgo-osdrv` (a separate repo the image build clones).
+We do not fork it; we ship a **patch** under `configs/chip/sg200x/patches/osdrv/`
+that the Makefile applies during `osdrv-prepare-patch`:
+
+```diff
+--- a/extdrv/wireless/aic8800/aic8800_bsp/Makefile
++++ b/extdrv/wireless/aic8800/aic8800_bsp/Makefile
+-CONFIG_SDIO_BT = y
++CONFIG_SDIO_BT = n
+--- a/extdrv/wireless/aic8800/aic8800_fdrv/Makefile
++++ b/extdrv/wireless/aic8800/aic8800_fdrv/Makefile
+-CONFIG_SDIO_BT=y
++CONFIG_SDIO_BT=n
+-CONFIG_COEX = y
++CONFIG_COEX = n
+```
+
+::: {.fragment}
+Pattern to remember: the image repo is a **patching layer**. Board quirks
+become patches in `configs/{common,chip/<chip>,<board>}/patches/<component>/`.
+:::
+
+::: {.notes}
+Patch ordering is common → chip → board, applied to kernel, u-boot, opensbi,
+fsbl, osdrv, middleware, buildroot. This is where most "vendor workarounds"
+live.
+:::
+
+## The Firmware Gap {.smaller}
+
+Even with power and a good driver, the chip needs its firmware. The AIC BSP
+**hard-codes a single directory**:
+
+```text
+/usr/lib/firmware/aic8800_sdio/aic8800_and_aic8800D80
+```
+
+and requests names such as `fmacfw_8800dc_u02.bin`, `fw_patch_8800dc_u02.bin`,
+`aic_userconfig_8800dc.txt`.
+
+::: {.fragment}
+The stock image packaged `aic8800/` and `aic8800_and_aic8800D80/` but **not
+the `aic8800DC/` blobs** the Oz64 actually needs — an upstream oversight.
+:::
+
+::: {.fragment}
+Fix in `scripts/addons/aic8800-firmware/addon.mk`: copy `aic8800DC/` (and
+`aic8800D80X2/`) and drop the DC blobs **into the driver's single default
+directory** as well:
+
+```make
+@cp -a $(...)/aic8800-sdio-firmware/aic8800DC/. \
+        $(AIC8800_PACKAGE_DIR)$(AIC8800_TARGET_DIR)/aic8800_and_aic8800D80/
+```
+:::
+
+::: {.notes}
+Because the driver reads only one `aic_fw_path`, the DC files must live in that
+one directory, not only in a sibling `aic8800DC/` folder. Check with
+`find /lib/firmware -iname '*8800dc*'`.
+:::
+
+## Loading the Modules {.smaller}
+
+Two init scripts do the userspace work (both in the `load-systemko` addon):
+
+- **`S00kmod`** — sets up `/mnt/system/ko`, then `insmod`s the base and (if
+  `ion_size != 0`) the ISP/vision/vcodec modules.
+- **`S25wifimod`** — the WiFi stack:
+
+```sh
+insmod cfg80211.ko
+insmod 3rd/aic8800_bsp.ko
+insmod 3rd/aic8800_fdrv.ko
+insmod 3rd/8733bs.ko        # unrelated Realtek part, harmless
+```
+
+::: {.fragment}
+`S00kmod` gates the camera modules on the ION heap size — which ties directly
+into the **second-CPU policy** (`SECOND_CPU=camera` vs `arduino`) in Part IV.
+:::
+
+::: {.notes}
+Firmware is installed to `/lib/firmware` by the `firmware-aic8800-cv181x`
+package; modules to `/mnt/system/ko/<kernel>/3rd/`. If firmware/module paths
+disagree, you get enumeration but firmware-upload failures.
+:::
+
+## The Missing Antenna {.smaller}
+
+After power + driver + firmware, the link came up but was **unusable**:
+associated, got DHCP, but `RSSI ≈ -83 dBm`, `linkspeed 1 Mbps`, and
+`ping`/ARP failed.
+
+::: {.fragment}
+The Oz64 has **no onboard WiFi antenna**. The schematic routes the module's
+`RF_ANT` through matching (`L11`, `R51 0R`) to a **tiny external connector**,
+part `ZX-RF-3-Z1.30.85X` = **u.FL / IPEX MHF1 (Gen 1)**, ~3.0 mm across.
+:::
+
+::: {.fragment}
+Attaching a 2.4 GHz u.FL antenna (stolen from a VisionFive 2) jumped the link
+to **`-53 dBm`, 0% loss**. Rule of thumb: a nearby 4-antenna AP should give
+~`-30…-45 dBm`; ~40 dB low means *no antenna*, not "a small antenna".
+:::
+
+::: {.notes}
+Connector trap: MHF1/u.FL (Gen 1) ≠ W.FL/MHF3 (Gen 3) ≠ MHF4 (Gen 4). They do
+not intermate. Amazon mostly stocks Gen 1 / Gen 4; Gen 3 is niche. Measure the
+jack (~3.0 mm ⇒ Gen 1) or compare to a known u.FL.
+:::
+
+## Verifying WiFi End-to-End {.smaller}
+
+From a serial console / SSH:
+
+```sh
+ip -br link                              # wlan0 present?
+lsmod | grep -E 'aic|cfg80211'           # bsp + fdrv loaded
+ls /sys/bus/mmc/devices/                 # mmc1:xxxx  (SDIO card)
+dmesg | grep -iE 'aicbsp|mmc1|sdio'      # power + enumeration
+cat /proc/device-tree/model; echo       # Pine64 Oz64
+cat /sys/kernel/debug/gpio | grep wifi   # gpio-510 (wifi_chip_en) out hi
+```
+
+::: {.fragment}
+Then the link itself:
+
+```sh
+iw dev wlan0 scan | grep SSID
+wpa_cli -i wlan0 signal_poll             # RSSI should be > -70
+ip neigh show                            # gateway resolved on wlan0?
+ping -I wlan0 <gateway>
+```
+:::
+
+::: {.notes}
+`ip neigh` is the sleeper diagnostic: an absent/FAILED neighbor on `wlan0`
+while it works on `end0` shows the radio isn't actually moving data.
+:::
+
+# Part IV — Making It an Appliance Image
+
+## Build-Time Configuration {.smaller}
+
+Rather than post-editing a flashed card, the image is personalized at build
+time by a small addon, **`scripts/addons/preconfigure/addon.mk`**, driven by
+make variables:
+
+| Variable | Writes | Effect |
+|---|---|---|
+| `IMAGE_HOSTNAME` | `/boot/hostname` | exact hostname |
+| `IMAGE_HOSTNAME_PREFIX` | `/boot/hostname.prefix` | `<prefix>-<hash>` name |
+| `WIFI_MODE` | `/boot/wifi.sta` / `.ap` | station / AP / none |
+| `WIFI_SSID` / `WIFI_PASS` | `/boot/wifi.ssid` / `.pass` | credentials (empty ⇒ open) |
+| `WIFI_WPA_CONF` | `/boot/wpa_supplicant.conf` | full raw supplicant config |
+| `SECOND_CPU` | `/boot/arduino` + `ION_SIZE` | C906L policy |
+
+::: {.fragment}
+Example:
+
+```sh
+make BOARD=oz64 SECOND_CPU=arduino IMAGE_HOSTNAME=oz64-nat \
+     WIFI_MODE=sta WIFI_SSID=domenet image
+```
+:::
+
+::: {.notes}
+These files live on the FAT `/boot` partition, so they survive rootfs changes
+and are read by init scripts at boot. Passing them on the make command line
+keeps them out of the repo.
+:::
+
+## Hostname Persistence {.smaller}
+
+On the board, `/etc/hostname` is **not authoritative**: `S10uuid` rewrites it
+every boot from a device-key hash (so you can't just edit it).
+
+```sh
+prefix=$(cat /boot/hostname.prefix)          # default = board name
+new_hostname=${prefix}-$(sha512sum /device_key | head -c 4)
+[ -e /boot/hostname ] && new_hostname=$(cat /boot/hostname)   # override
+```
+
+::: {.fragment}
+So the *persistent* knobs are:
+
+- `/boot/hostname` → exact name (wins over the hash)
+- `/boot/hostname.prefix` → just the prefix
+:::
+
+::: {.fragment}
+The `preconfigure` addon writes `/boot/hostname` from `IMAGE_HOSTNAME`, so the
+build-time name sticks across reboots. The same script also sets the ethernet
+MAC (overridable via `/boot/eth.mac`).
+:::
+
+::: {.notes}
+This explains a lot of student confusion: editing `/etc/hostname` appears to
+work until reboot, then the device-key service puts the hash name back.
+:::
+
+## WiFi Configuration at Boot {.smaller}
+
+`S30wifi` (from the `wifi-builtin` addon) reads the `/boot/wifi.*` files and
+generates the interface config:
+
+- station + `/boot/wifi.ssid` + `/boot/wifi.pass` →
+  `wpa-essid` / `wpa-psk` in `/etc/network/interfaces.d/wlan0`
+- station with **no password** → `wpa-key-mgmt NONE` (open network)
+- `/boot/wpa_supplicant.conf` → `wpa-conf /etc/wpa_supplicant.conf`
+- `/boot/wifi.ap` → hostapd + udhcpd (access point)
+
+::: {.fragment}
+Two fixes made here:
+
+1. **`echo -e` bug** — `/bin/sh` is `dash`, whose `echo` does not understand
+   `-e`, so the generated file got literal `-e` prefixes and never associated.
+   Replaced with `printf`.
+2. **Open-network support** — empty password now emits `wpa-key-mgmt NONE`
+   instead of an empty `wpa-psk` (which `wpa_passphrase` turns into a bogus
+   passphrase).
+:::
+
+::: {.notes}
+This is a nice "shell portability" lesson: scripts that work in bash silently
+break under dash. Always test init scripts with `/bin/sh`.
+:::
+
+## The Service-Ordering Race {.smaller}
+
+After flashing, WiFi *still* failed to auto-connect. The config on disk was
+correct, but `ifup@wlan0` had already run **before** `S30wifi` wrote it.
+
+::: {.fragment}
+The cause was a **typo in the systemd unit**:
+
+```ini
+# wifi-builtin.service / wifi-mac.service
+-Before=ifup@wifi0.service
++Before=ifup@wlan0.service
+```
+
+`wifi0` is not a unit, so nothing ordered `S30wifi` ahead of `ifup@wlan0`.
+Both fired in the same second; `ifup@wlan0` read the default
+`iface wlan0 inet manual` and never re-ran.
+:::
+
+::: {.fragment}
+Evidence: `ifup@wlan0` at `00:20:41`, `S30wifi` wrote the ssid at `00:20:42`;
+`/run/network/ifstate` already contained `wlan0=wlan0`.
+:::
+
+::: {.notes}
+Debug technique: when "config is correct but doesn't apply", check ordering
+and one-shot completion, not the config. `systemctl show -p ExecMainStartTimestamp`
+on both units told the whole story.
+:::
+
+## Per-Interface DHCP Names + Deterministic IPv6 {.smaller}
+
+A subtler usability bug: both NICs sent the **same DHCP hostname**, so the
+router's DNS conflated them into one name with several (stale) records —
+`resolvectl` returned dead `fd86::…` ULAs, and `ping <name>` failed while
+`ping -4 <name>` worked.
+
+::: {.fragment}
+`preconfigure` now edits `/etc/dhcpcd.conf` (each interface runs its own
+`dhcpcd`):
+
+```ini
+duid ll                     # deterministic DHCPv6 DUID (link-layer)
+slaac hwaddr                # deterministic EUI-64 SLAAC address
+nohook hostname             # dhcpcd must not rename the system host
+interface wlan0
+    hostname oz64-nat-wifi  # ethernet keeps "oz64-nat"
+```
+:::
+
+::: {.fragment}
+Result: `oz64-nat.lan` (eth) and `oz64-nat-wifi.lan` (WiFi), each with its own
+**stable** A/AAAA; `<name>.local` (mDNS) still resolves both.
+:::
+
+::: {.notes}
+Two lessons: (1) multi-homed hosts on one subnet confuse ARP and DHCP-DNS;
+distinct names fix the DNS half. (2) Address selection prefers IPv6, so one
+half-broken v6 record makes a v4-only fix look broken.
+:::
+
+## Second-CPU Policy: Camera vs Arduino {.smaller}
+
+The SG2000 has **one small C906L core**. It can run the vendor **ISP** or a
+user **FreeRTOS/Arduino** image, not both.
+
+| `SECOND_CPU` | `ION_SIZE` | `IMAGE_ADDITIONS` | C906L |
+|---|---|---|---|
+| `camera` | `74` | `sensor-config`, `tpusdk` | runs ISP |
+| `arduino` | `0` | (none of the above) | free for `remoteproc` |
+
+::: {.fragment}
+With `ION_SIZE=0`, `chip.mk` zeroes the ISP/H26X heap and `S00kmod` **skips
+every ISP/vcodec `insmod`**; the kernel still exports
+`CONFIG_CVITEK_REMOTEPROC` + mailbox, so Arduino firmware loads via
+`/sys/class/remoteproc/`.
+:::
+
+::: {.fragment}
+Because the memory map changes, the two personalities are **separate full image
+builds** — not a runtime toggle.
+:::
+
+::: {.notes}
+Oz64 default is `SECOND_CPU=arduino`; the camera path still needs an `oz64`
+branch in `device-config` and `TPUSDK_CHIP=sg2000`. Documented as a follow-up.
+:::
+
+# Part V — Build, Flash, Debug
+
+## Build the Image {.smaller}
+
+Everything runs **inside the builder container** (paths like `/configs`,
+`/builder`, `/rootfs` are container paths):
+
+```sh
+docker run --privileged -it --rm \
+  -v "$PWD/configs":/configs -v "$PWD/image":/output \
+  ghcr.io/scpcom/sophgo-sg200x-debian:debian \
+  make BOARD=oz64 SECOND_CPU=arduino IMAGE_HOSTNAME=oz64-nat \
+       WIFI_MODE=sta WIFI_SSID=domenet image
+```
+
+::: {.fragment}
+Output: `image/oz64-e_sd.img.lz4` (plus the `.deb` packages). Flash:
+
+```sh
+lz4 -cd image/oz64-e_sd.img.lz4 | sudo dd of=/dev/sdX bs=4M status=progress
+```
+:::
+
+::: {.fragment}
+Note: a build that mounts `scripts/` **writable** lets the toolchain step
+rewrite `scripts/replace-all-*.sh`; commit/stash or rebuild the `builder`
+image instead. (A local `build-demo1.sh` wraps `docker build` + `make`.)
+:::
+
+::: {.notes}
+The first build is slow (kernel, buildroot, middleware). Subsequent image-only
+changes still rebuild the rootfs. Use the `linux`/`fsbl` targets to iterate on
+those pieces alone.
+:::
+
+## Debug Playbook {.smaller}
+
+When a ported board "doesn't work", peel the layers in order:
+
+| Layer | Check | Tool |
+|---|---|---|
+| DTB applied? | model string | `cat /proc/device-tree/model` |
+| Pin powered? | hog state | `cat /sys/kernel/debug/gpio` |
+| Bus enumerates? | SDIO card | `ls /sys/bus/mmc/devices` |
+| Driver loads? | modules | `lsmod`, `dmesg \| grep aic` |
+| Interface up? | `wlan0` | `ip -br link` |
+| Join + data? | RSSI / neighbor | `wpa_cli signal_poll`, `ip neigh` |
+| Config applied? | ordering | `systemctl show -p ExecMainStartTimestamp` |
+
+::: {.fragment}
+The failures we hit mapped cleanly onto this list: pin (DT), driver
+(`CONFIG_SDIO_BT`), firmware (missing blobs), physical (antenna), and
+ordering (systemd typo).
+:::
+
+::: {.notes}
+Teach the habit: confirm each layer before moving up. Most "WiFi is broken"
+reports are actually a lower layer (pin, bus, firmware) failing silently.
+:::
+
+## The Multi-Homing Gotcha {.smaller}
+
+With **both** Ethernet and WiFi up on the same subnet, the board is
+multi-homed and default Linux behavior bites:
+
+- `arp_ignore=0` → the board answers ARP for `wlan0`'s IP on `end0`, so the
+  peer learns the wrong MAC.
+- Two default routes; the wired one usually wins.
+- Result: SSH on the eth IP works, `ping` to the WiFi IP dies.
+
+::: {.fragment}
+Cleanest fixes, in order:
+
+1. Run **one** link (what happens naturally when the cable is out).
+2. Give the interfaces **different DHCP names** (done — Part IV).
+3. If you must run both on one subnet: `arp_ignore=1`, `arp_announce=2`, and
+   link metrics / policy routing.
+:::
+
+::: {.notes}
+This is not a driver bug — it's the classic same-subnet dual-homing problem,
+and it is worth its own discussion in a networking lecture.
+:::
+
+## Summary {.smaller}
+
+- Porting a board here = authoring **`configs/<board>/`** and picking addons.
+- The Oz64 is "the Duo S plus a device tree": it **reuses the Duo S U-Boot**
+  and keeps the DTB filename so `fdtfile` resolves.
+- The single most important DT change: move the WiFi power **gpio-hog** to
+  **`XGPIOA[30]` (GPIO 510)**.
+- WiFi needed **four** independent things: power hog, `CONFIG_SDIO_BT=n`
+  driver patch, the **AIC8800DC firmware blobs**, and a **physical antenna**.
+- A correct config can still fail due to a **systemd ordering typo** — check
+  ordering and one-shot timing, not just the file.
+- Multi-homed same-subnet hosts need **distinct names** (and deterministic
+  IPv6) to stay sane.
+
+::: {.notes}
+Close by mapping this port onto the general skill: read the schematic, find the
+one pin that matters, patch rather than fork, and verify layer by layer.
+:::
+
+## Discussion & Lab Ideas {.smaller}
+
+::: {.fragment}
+**Discussion**
+
+- Why does a GPIO *hog* (probe-time) succeed where userspace `gpio set` later
+  needs an MMC rescan?
+- Why is a *power* error (`fail to set AIC_WIFI power state`) really a *bus*
+  error here?
+- When is patching a vendor driver (`CONFIG_SDIO_BT=n`) better than forking it?
+:::
+
+::: {.fragment}
+**Lab**
+
+1. Dump the live tree: `dtc -I fs /proc/device-tree` and find `wifi_chip_en`.
+2. Diff `configs/duos` vs `configs/oz64` and explain every line.
+3. Measure RSSI with and without an antenna; compute the missing gap in dB.
+4. Reproduce the ordering race by reverting `Before=ifup@wlan0.service`.
+:::
+
+::: {.notes}
+The RSSI lab is a great, tactile demonstration of RF and the difference between
+L2 association and actual data transfer.
+:::
