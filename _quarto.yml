@@ -18,6 +18,10 @@ website:
         menu:
           - boot-slides/index.qmd
           - boot-slides/refs.md
+      - text: Why an OS?
+        menu:
+          - freertos-slides/index.qmd
+          - freertos-slides/refs.md
       - text: Oz64 Port
         menu:
           - oz64-image-slides/index.qmd

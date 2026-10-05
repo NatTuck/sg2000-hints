@@ -1,0 +1,1058 @@
+---
+title: "Why an OS?"
+subtitle: "From Blink to FreeRTOS on the SG2000 Little Core"
+author: "CS 4250 — Computer Architecture"
+date: today
+format:
+  revealjs:
+    theme: [default, custom.scss]
+    slide-number: true
+    incremental: false
+    controls: true
+    progress: true
+    hash: true
+    center: false
+    code-line-numbers: true
+    chalkboard: true
+    footer: "CS 4250 · Why an OS? — From Blink to FreeRTOS"
+    preview-links: auto
+    fig-align: center
+    width: 1280
+    height: 800
+    margin: 0.08
+---
+
+## The Question for Today {.smaller}
+
+The SG2000's little C906 core is sold as a **bare-metal Arduino target**.
+You write `setup()` and `loop()`, and it blinks an LED.
+
+::: {.fragment}
+**That works.** For one job, it is the *right* tool.
+:::
+
+::: {.fragment}
+> But as soon as you ask the core to do **more than one thing** — with any
+> timing discipline — you rediscover every reason operating systems exist.
+:::
+
+::: {.fragment}
+So the real question is not *"what does FreeRTOS do?"* It is:
+
+> ### Why do we want an OS at all — and why do we still want one on a tiny real-time core?
+:::
+
+::: {.notes}
+Set the frame. This deck is motivation-first: the FreeRTOS APIs and the C906
+port are evidence for a claim about *why* OSes exist, not a feature tour. Every
+problem we meet is one an OS was invented to solve.
+:::
+
+# Part 0 — The Bare-Metal Machine We Start From
+
+## The Little Core {.smaller}
+
+The SG2000's second core is **not a Linux CPU**. `nproc` on the board reports
+**1**.
+
+| Property | Value |
+|---|---|
+| Core | T-Head **C906L** (RISC-V RV64), ~700 MHz |
+| Cache | **None** (the big C920 has L1/L2) |
+| Privilege | Starts in **M-mode**; no MMU page tables, no PMP |
+| Memory | 2 MB carveout at **`0x9fe0_0000`** |
+| Loaded by | **remoteproc** (`/sys/class/remoteproc/remoteproc0`) |
+| Role | bare-metal / RTOS service core alongside Linux |
+
+::: {.fragment}
+Because it runs in M-mode with **no translation**, a load or store *is* a
+physical access. Nothing is isolated — not from the SoC, not from Linux.
+:::
+
+::: {.notes}
+This is the machine from the boot deck and physical-memory.md. Key architectural
+fact: M-mode + no MMU/PMP means the core is maximally capable and maximally
+dangerous. Contrast with Linux userspace, which is behind Sv39 page tables and
+traps up via ecall.
+:::
+
+## The Programming Model We're Handed {.smaller}
+
+The vendor `sophgo:SG200X` Arduino core gives you exactly two functions:
+
+```cpp
+#define LED_PIN 7
+
+void setup() {
+  pinMode(LED_PIN, OUTPUT);
+}
+
+void loop() {
+  digitalWrite(LED_PIN, HIGH);
+  delay(1000);
+  digitalWrite(LED_PIN, LOW);
+  delay(1000);
+}
+```
+
+::: {.fragment}
+- `setup()` runs **once**; `loop()` runs **forever** — one thread of control.
+- `pinMode`/`digitalWrite` already hide the pinmux and register writes.
+- `delay()` is a **busy-wait**: the core spins and does nothing else.
+:::
+
+::: {.fragment}
+Build it with `arduino-cli compile --fqbn sophgo:SG200X:duos`; it links at
+`0x9fe0_0000` and is loaded via remoteproc.
+:::
+
+::: {.notes}
+The point: even "bare metal" already contains a thin layer of OS-like
+abstraction (the Arduino core). The OS question is about how far that layer
+should go. delay() busy-waits — this will come back immediately.
+:::
+
+## Blink Works. So Why Would Anyone Want More? {.smaller}
+
+The superloop is a complete, correct program. It is also a **mental model**
+with hard limits:
+
+::: {.fragment}
+```text
+        +---------------------------+
+        |  loop() { A; delay; B; }  |   one thread of control
+        +---------------------------+
+                    |
+       "do this, then do that, forever"
+```
+:::
+
+::: {.fragment}
+Everything we do for the rest of this deck is an answer to one of these:
+
+1. How do I do **two things at once**?
+2. How do I **meet a deadline** without spinning?
+3. How do I make the **important thing run first**?
+4. How do two activities **share data safely**?
+5. How do I write code that isn't **welded to one chip**?
+6. How does this core **cooperate with Linux**?
+:::
+
+::: {.notes}
+Preview the six questions. Each is a normal "programming with threads" question
+— and each maps to an OS service. Frame the OS as a bundle of answers.
+:::
+
+# Part I — Why Do We Want an OS at All?
+
+## The Six Questions → The Six Services {.smaller}
+
+| # | The question | The OS service that answers it |
+|---|---|---|
+| 1 | Do two things at once | **tasks + scheduler** |
+| 2 | Meet a deadline without spinning | **timers, blocking delays, tick** |
+| 3 | Run the important thing first | **preemptive priority scheduling** |
+| 4 | Share data safely | **critical sections, mutexes, queues** |
+| 5 | Write portable, reusable code | **drivers, HAL, standard APIs** |
+| 6 | Cooperate with Linux | **message queues / IPC** |
+
+::: {.fragment}
+> An operating system is not a product. It is **a bundle of answers** to these
+> questions, packaged so every program doesn't reinvent them.
+:::
+
+::: {.notes}
+This table is the thesis in one slide. Everything after is a derivation. Note
+that each service is about *coordination* — the OS exists because independent
+activities must share one finite machine.
+:::
+
+## Q1 — How Do I Do Two Things at Once? {.smaller}
+
+**Goal:** blink pin 7 at 1 Hz *and* pin 13 at 4 Hz — independently.
+
+::: {.fragment}
+**Naive superloop:**
+```cpp
+void loop() {
+  digitalWrite(7, HIGH); delay(500);
+  digitalWrite(7, LOW);  delay(500);   // pin 13 waits here
+  digitalWrite(8, HIGH); delay(125);
+  digitalWrite(8, LOW);  delay(125);
+}
+```
+The two activities **serialize**: pin 13 only runs after pin 7 finishes, so
+neither rate is right. Blocking `delay()` is the enemy.
+:::
+
+::: {.fragment}
+**The OS answer:** let each activity be a **task** with its own stack and its
+own notion of time; a **scheduler** interleaves them.
+:::
+
+::: {.notes}
+This is the fundamental concurrency problem. The superloop has one program
+counter, so "two things" is impossible without either splitting work into
+non-blocking steps or giving each activity its own context. Tasks provide the
+latter.
+:::
+
+## Q1 — The OS Answer: Tasks {.smaller}
+
+A **task** = an independent flow of control with:
+
+- its **own stack** (saved registers + return addresses),
+- a **priority**,
+- a **state**: *running / ready / blocked / suspended*.
+
+::: {.fragment}
+```cpp
+static void blink_task(void *arg) {
+  const Blink *b = (const Blink *)arg;
+  for (;;) {
+    digitalWrite(b->pin, HIGH);  vTaskDelay(b->half);
+    digitalWrite(b->pin, LOW);   vTaskDelay(b->half);
+  }
+}
+
+xTaskCreate(blink_task, "fast", 256, &fast, 2, NULL);
+xTaskCreate(blink_task, "slow", 256, &slow, 1, NULL);
+vTaskStartScheduler();
+```
+:::
+
+::: {.fragment}
+The scheduler gives the CPU to whichever ready task should run. `loop()` is
+gone; **the OS owns the program counter now**.
+:::
+
+::: {.notes}
+Contrast: one hardware PC, but N software contexts. The scheduler chooses which
+context the PC belongs to. This is the core illusion an OS provides. Note each
+task's stack costs RAM — a real cost we'll return to.
+:::
+
+## Q2 — How Do I Meet a Deadline Without Spinning? {.smaller}
+
+**Goal:** toggle a pin every 1 ms — *precisely* — while doing other work.
+
+::: {.fragment}
+**Naive approach:** poll a counter or call `delay(1)`.
+```cpp
+digitalWrite(PIN, HIGH);
+delay(1);                  // burns a whole millisecond of CPU
+digitalWrite(PIN, LOW);
+```
+`delay()` **wastes the CPU** and drifts under load. Polling in `loop()` has
+**jitter** proportional to how long the rest of the loop takes.
+:::
+
+::: {.fragment}
+**The OS answer:** a **hardware timer** raises an interrupt at a fixed period;
+`vTaskDelay` / `vTaskDelayUntil` let a task **sleep** until a deadline, yielding
+the CPU in the meantime.
+:::
+
+::: {.notes}
+Two distinct ideas: (a) timer-driven events (interrupts), and (b) blocking
+sleep that does not waste CPU. An OS gives you both and a common time base
+(the tick). This is the "real-time" seed.
+:::
+
+## Q2 — The OS Answer: A Timer and a Tick {.smaller}
+
+The C906 raises a **machine-timer interrupt** when a counter reaches a compare
+value:
+
+- `mtime` — free-running 64-bit counter
+- `mtimecmp` — compare register; interrupt fires when `mtime ≥ mtimecmp`
+- trap cause **`mcause = 0x8000_0000_0000_0007`** (interrupt, machine timer)
+
+::: {.fragment}
+FreeRTOS turns this into a periodic **tick**:
+
+```c
+#define configTICK_RATE_HZ 1000      // one tick = 1 ms
+```
+
+Each tick it re-arms `mtimecmp` and decides whether to switch tasks.
+:::
+
+::: {.fragment}
+A task can then say *"wake me in 10 ticks"* and **block** — the CPU runs other
+tasks until the deadline. No spinning.
+:::
+
+::: {.notes}
+Port specifics: modern FreeRTOS RISC-V uses configMTIME_BASE_ADDRESS /
+configMTIMECMP_BASE_ADDRESS and portasmHAS_MTIME rather than the old SiFive
+CLINT constants. On the C906, mtimecmp is two 32-bit halves and must be written
+low-word-last. If mtime is not memory-mapped, read the time CSR instead. Keep
+this at "the OS owns a hardware time base" for now; details in Part III.
+:::
+
+## Q3 — How Do I Make the Important Thing Run First? {.smaller}
+
+**Goal:** a safety-critical control loop must preempt a logging task.
+
+::: {.fragment}
+In a superloop, ordering is **lexical** — whoever you wrote first runs first.
+There is no way to say *"this matters more."*
+:::
+
+::: {.fragment}
+**The OS answer: priorities + preemption.**
+- Every task has a **priority**.
+- The scheduler always runs the **highest-priority ready** task.
+- When a higher-priority task becomes ready, it **preempts** the running one
+  at the next tick (or immediately, for an ISR-driven unblock).
+:::
+
+::: {.fragment}
+> This is what "real-time" actually buys you: a **bounded, predictable** delay
+> before the important work runs — not raw speed.
+:::
+
+::: {.notes}
+Define "real-time" correctly: meeting deadlines, not being fast. Preemption is
+the mechanism. Tie back to Q2: the timer tick is what makes preemption
+possible; without a periodic interrupt the scheduler can't take the CPU back
+from a running task.
+:::
+
+## Q4 — How Do Two Activities Share Data Safely? {.smaller}
+
+**Goal:** `loop()` and an ISR both touch a counter.
+
+::: {.fragment}
+```cpp
+volatile uint32_t count = 0;
+void isr()      { count++; }        // read-modify-write
+void loop()     { count++; }        // read-modify-write
+```
+If the ISR fires **between** `loop()`'s load and store, one increment is
+**lost**. This is a **race condition** — and it is a *hardware* problem, not a
+language one.
+:::
+
+::: {.fragment}
+**The OS answer:** primitives that make a region **atomic** or hand data over
+safely:
+- **critical sections** (mask interrupts briefly)
+- **mutexes** (mutual exclusion, with priority inheritance)
+- **queues / semaphores** (move data *and* signal, race-free)
+:::
+
+::: {.notes}
+The race is real on a single core because an interrupt can interleave. On
+multicore (this little core vs. the C920 running Linux) it's worse: true
+parallel access plus cache coherency. The OS provides the vocabulary and the
+memory-ordering discipline.
+:::
+
+## Q5 — How Do I Write Code That Isn't Welded to One Chip? {.smaller}
+
+Look again at the Arduino sketch:
+
+```cpp
+pinMode(LED_PIN, OUTPUT);
+digitalWrite(LED_PIN, HIGH);
+delay(1000);
+```
+
+::: {.fragment}
+None of those names the SoC. The **Arduino core** maps them to
+`VIVO_D3`, the pinmux at `0x03001150`, and `SWPORTA_DR` at `0x03021000`.
+:::
+
+::: {.fragment}
+**That is already an OS-style abstraction layer** — a tiny one. The OS answer
+generalizes it:
+- **device drivers** behind a stable interface,
+- a **HAL** so the same program runs on a different board,
+- **standard APIs** (tasks, queues, timers) that outlive the hardware.
+:::
+
+::: {.fragment}
+> Portability is not a luxury. It is what lets a program outlive the chip it
+> was written for.
+:::
+
+::: {.notes}
+Students often think of the OS as "scheduling." But HAL/driver abstraction is
+just as central. The Arduino core is a proto-OS: it proves the value of hiding
+registers, and it shows the ceiling of doing it ad hoc.
+:::
+
+## Q6 — How Does This Core Cooperate with Linux? {.smaller}
+
+The little core is not alone. It shares DRAM with the C920 running Linux.
+
+::: {.fragment}
+Raw cooperation means:
+- shared memory in the carveout,
+- a **mailbox** block at `0x0190_0000` to raise inter-core interrupts,
+- **virtio rings** (`vdev0vring0/1`, `vdev0buffer`) for messages.
+:::
+
+::: {.fragment}
+Doing this by hand — polling a magic address, hand-rolling a ring buffer,
+getting the fences right — is exactly the kind of code an OS should own.
+:::
+
+::: {.fragment}
+**The OS answer:** an **IPC layer**. FreeRTOS provides queues and task
+notifications; the vendor port layers **RPMsg** and the `rtos_cmdqu` command
+queue on top, so Linux sends a message and a **task wakes up** to handle it.
+:::
+
+::: {.notes}
+This is the payoff slide for "why an OS on a *secondary* core." The core is a
+service provider. A service provider needs a scheduler (to be responsive) and
+an IPC abstraction (to be well-behaved). Raw register poking is not a system.
+:::
+
+## Synthesis: An OS Is a Bundle of Answers {.smaller}
+
+| You want to… | Without an OS | With an OS |
+|---|---|---|
+| do two things | interleave by hand, one PC | **tasks + scheduler** |
+| hit a deadline | spin or poll, drift | **timer tick + blocking sleep** |
+| prioritize | reorder your code | **priority + preemption** |
+| share data | hope the race doesn't happen | **critical sections, mutexes, queues** |
+| port to a new chip | rewrite every register write | **drivers + HAL + standard API** |
+| talk to another core | invent your own protocol | **IPC / message queues** |
+
+::: {.fragment}
+> Every "OS feature" is a **named, reusable answer to a coordination problem**
+> you would otherwise solve badly, once per project.
+:::
+
+::: {.notes}
+Land the thesis of Part I. The rest of the deck asks the second question:
+why does this reasoning still apply when the core is tiny and real-time?
+:::
+
+# Part II — Why an OS on a Secondary *Real-Time* Core?
+
+## "Real-Time" Does Not Mean "No OS" {.smaller}
+
+A common intuition: *"real-time means bare metal, because an OS adds
+overhead."*
+
+::: {.fragment}
+**Real-time means _deterministic_.** The requirement is a **bounded** time to
+respond, not the smallest average time.
+:::
+
+::: {.fragment}
+An RTOS *increases* determinism:
+- a **fixed tick** gives a known scheduling granularity,
+- **priority preemption** bounds the delay before urgent work runs,
+- **blocking primitives** remove unbounded polling loops,
+- **bounded** interrupt latency and critical sections.
+:::
+
+::: {.fragment}
+> The danger to real-time is **unbounded** behavior — and hand-rolled
+> superloops are full of it.
+:::
+
+::: {.notes}
+Correct the misconception directly. The enemy of real-time is jitter and
+unbounded waits, which is precisely what a superloop with delay() gives you.
+An RTOS makes timing analyzable.
+:::
+
+## Why Not Just Run Linux Here? {.smaller}
+
+If OSes are good, why not put the *real* OS on the little core?
+
+::: {.fragment}
+Because **Linux cannot run there**:
+
+| Requirement | Little C906L |
+|---|---|
+| MMU / page tables | **none** — M-mode, physical addressing only |
+| Privilege separation | no S/U-mode setup; no isolation |
+| Memory | **2 MB** carveout (Linux wants far more) |
+| Cache | none |
+| SMP | `nproc` = **1**; it's a service core, not a Linux CPU |
+
+:::
+
+::: {.fragment}
+> If you want OS services on this core, you need the **smallest OS that fits**:
+> a **real-time kernel** — FreeRTOS.
+:::
+
+::: {.notes}
+This is the sharpest answer to "why an OS *here*." Linux's architecture
+assumes an MMU and lots of memory; the C906L has neither. An RTOS is an OS
+that scales down to a core with no MMU and kilobytes of RAM. This slide is the
+bridge from "why an OS" to "why FreeRTOS specifically."
+:::
+
+## The Core Is a *Service*, Not a Computer {.smaller}
+
+On the Duo S, the little core is there to serve the system:
+
+- camera / ISP pipelines, video codec, audio,
+- real-time GPIO and control loops,
+- custom tasks Linux shouldn't do (timing, latency, isolation from Linux).
+
+::: {.fragment}
+A service provider needs two things an OS provides:
+
+1. a **scheduler**, so it stays responsive to requests, and
+2. an **IPC framework**, so it behaves like a well-defined component instead
+   of a rogue agent writing to physical memory.
+:::
+
+::: {.fragment}
+> An RTOS is what turns "a core that can do anything" into "a component you can
+> rely on."
+:::
+
+::: {.notes}
+Tie to the earlier hints: physical-memory.md notes the little core can corrupt
+Linux with a stray write and nobody is notified. An OS gives structure:
+tasks, priorities, and message-passing boundaries. The vendor port's CMDQU
+task is exactly this.
+:::
+
+## The Honest Counterpoint: When *Not* to Use an RTOS {.smaller}
+
+An OS is not free. It costs:
+
+- **RAM** — every task has a stack; the carveout is only 2 MB,
+- **CPU** — a tick interrupt and context switches,
+- **complexity** — a port, a config, a build system,
+- **latency** — critical sections and kernel calls add bounded overhead.
+
+::: {.fragment}
+For **one trivial job** — Blink, a single ADC loop, a fixed waveform — bare
+metal is simpler, smaller, and *correct*.
+:::
+
+::: {.fragment}
+> The engineering skill is not "always use an OS." It is **recognizing the
+> moment the coordination problems outgrow the superloop.**
+:::
+
+::: {.notes}
+Intellectual honesty matters. We spent Part I arguing for OSes; now bound the
+claim. The deck's real lesson is judgment: match the tool to the number of
+concurrent, timing-constrained activities.
+:::
+
+# Part III — How FreeRTOS Answers Those Questions
+
+## Tasks, Priorities, and States {.smaller}
+
+```c
+xTaskCreate(blink_task, "fast", 256, &fast, 2, NULL);
+//           fn         name   stack  arg   prio handle
+```
+
+::: {.fragment}
+- **Priority**: higher number wins. The scheduler runs the highest-priority
+  **ready** task.
+- **States**: *Running → Ready → Blocked → Suspended*.
+- **Idle task**: runs when nothing else is ready (priority 0); can free deleted
+  tasks' memory.
+:::
+
+::: {.fragment}
+The vendor SG2000 port creates its own tasks in `main_cvirtos()` before calling
+`vTaskStartScheduler()` — e.g. a high-priority **CMDQU** task that handles
+Linux mailbox commands.
+:::
+
+::: {.notes}
+Point at the Sophgo port's task table: CMDQU at priority 5, others at 3. The
+system designer encodes importance in priority. vTaskStartScheduler never
+returns; from then on the kernel owns the program counter.
+:::
+
+## The Key Mental Shift: Blocking vs. Busy-Waiting {.smaller}
+
+::: {.columns}
+::: {.column width="50%"}
+**Bare metal**
+
+```cpp
+digitalWrite(PIN, HIGH);
+delay(500);          // spin for 500 ms
+digitalWrite(PIN, LOW);
+delay(500);
+```
+CPU is **busy** the whole time. Nothing else can run.
+:::
+::: {.column width="50%"}
+**FreeRTOS**
+
+```c
+digitalWrite(PIN, HIGH);
+vTaskDelay(pdMS_TO_TICKS(500));
+digitalWrite(PIN, LOW);
+vTaskDelay(pdMS_TO_TICKS(500));
+```
+CPU is **released** to other tasks while this one sleeps.
+:::
+:::
+
+::: {.fragment}
+> Same shape, opposite meaning. `delay()` **consumes** time; `vTaskDelay()`
+> **surrenders** it. This one change is most of what an RTOS buys you.
+:::
+
+::: {.notes}
+Emphasize: vTaskDelay puts the task on a blocked list and the scheduler picks
+someone else. This is why tasks can "do two things at once" without a fast
+CPU. The Arduino delay() is a busy-wait.
+:::
+
+## Preemption and the Tick (the Hardware Underneath) {.smaller}
+
+Every tick, the machine-timer interrupt fires:
+
+```text
+mtime  ≥ mtimecmp   →   mcause = 0x8000_0000_0000_0007
+                          │
+                          ├─ re-arm mtimecmp for the next tick
+                          ├─ xTaskIncrementTick()   (wake sleepers)
+                          └─ vTaskSwitchContext()   (pick next task)
+```
+
+::: {.fragment}
+- `mtvec` holds the trap handler address (set **before** `vTaskStartScheduler`).
+- `mie.MTIE` enables the machine-timer interrupt.
+- Without this periodic interrupt the scheduler could never take the CPU back
+  from a running task — **preemption is built on the timer**.
+:::
+
+::: {.notes}
+Port specifics: the RISC-V port writes mtvec and enables MTIE|MEIE (0x880 in
+mie). On the C906, mtimecmp is a pair of 32-bit registers and the low word must
+be written last; if mtime isn't memory-mapped the port reads the time CSR.
+Keep the slide about the *concept*: the tick is the heartbeat of preemption.
+:::
+
+## Context Switch Anatomy {.smaller}
+
+A context switch is a **save + restore** of a running task's state:
+
+::: {.fragment}
+**Save** (into the task's TCB / stack):
+- all integer registers,
+- `mepc` (where to resume),
+- `mstatus` (interrupt-enable state).
+
+**Restore** (from the next task):
+- its registers, `mepc`, `mstatus`,
+- then **`mret`** returns to the next task.
+:::
+
+::: {.fragment}
+FreeRTOS pre-builds a synthetic frame in `pxPortInitialiseStack()` so the first
+task can be started by a normal context-restore. `xPortStartFirstTask()`
+simply restores it and `mret`s.
+:::
+
+::: {.fragment}
+> The OS creates the illusion of many CPUs by **swapping register state** on
+> one real core.
+:::
+
+::: {.notes}
+This is the deepest architecture tie-in: context switching is register-file
+save/restore plus the machine-mode CSRs that govern return (mepc/mstatus) and
+mret. The synthetic stack frame is a classic trick: make task start look like
+resuming from an interrupt. Source: FreeRTOS portable/GCC/RISC-V portContext.h.
+:::
+
+## Synchronization & IPC Primitives {.smaller}
+
+| Primitive | Use it for |
+|---|---|
+| **Queue** | move data between tasks; also signals a waiter |
+| **Binary semaphore** | signal an event (e.g. from an ISR) |
+| **Counting semaphore** | track N resources / events |
+| **Mutex** | mutual exclusion; supports **priority inheritance** |
+| **Task notification** | fast, lightweight per-task signal |
+| **Stream/message buffer** | byte/record stream between task and ISR |
+
+::: {.fragment}
+ISRs cannot block, so they use the **`...FromISR()`** variants
+(`xQueueSendFromISR`, `vTaskNotifyGiveFromISR`) to wake a task that does the
+slow work — **deferred interrupt processing**.
+:::
+
+::: {.notes}
+The FromISR rule is fundamental: keep ISRs short; let a task do the work.
+Priority inheritance in mutexes prevents priority inversion — a classic
+real-time topic. Queues both move data and synchronize, which is why they are
+the workhorse.
+:::
+
+## Memory: Every Task Costs a Stack {.smaller}
+
+In a superloop there is one stack. With tasks:
+
+```c
+xTaskCreate(blink_task, "fast", 256, ...);   // 256 words ≈ 1 KB
+```
+
+::: {.fragment}
+- Each task needs its **own stack** in the 2 MB carveout.
+- `heap_4` is the usual allocator in this port.
+- Stack sizing is a real design task — too small overflows silently and
+  corrupts a neighbour.
+:::
+
+::: {.fragment}
+> This is the concrete price of concurrency, and the reason "just add tasks"
+> is not free on a memory-starved core.
+:::
+
+::: {.notes}
+Connect back to the counterpoint slide: the OS's abstractions are backed by
+finite RAM. On a 2 MB carveout you must budget stacks deliberately. Mention
+uxTaskGetStackHighWaterMark as the way to check.
+:::
+
+# Part IV — The Same Blink, Four Ways
+
+## The Ladder {.smaller}
+
+We solve the **same problem** — blink two pins at different rates — four ways,
+each fixing what the previous one broke:
+
+| Rung | Mechanism | Fixes |
+|---|---|---|
+| 1 | `delay()` superloop | — (baseline) |
+| 2 | `millis()` state machine | concurrency without blocking |
+| 3 | timer **ISR** | precise timing, decoupled from `loop()` |
+| 4 | FreeRTOS **tasks** | priority, blocking, clean structure |
+
+::: {.fragment}
+Each rung is more **capable** — and more **complex**. Watch the trade.
+:::
+
+::: {.notes}
+This is the spine of the deck made concrete. The ladder is also the lab
+sequence: students can climb it on the DuoS. Each rung has an example sketch
+in the repo.
+:::
+
+## Rung 1 — `delay()` Superloop {.smaller}
+
+```cpp
+#define LED_A 7
+#define LED_B 13
+
+void setup() {
+  pinMode(LED_A, OUTPUT);
+  pinMode(LED_B, OUTPUT);
+}
+
+void loop() {
+  digitalWrite(LED_A, HIGH); delay(500);
+  digitalWrite(LED_A, LOW);  delay(500);
+  digitalWrite(LED_B, HIGH); delay(125);
+  digitalWrite(LED_B, LOW);  delay(125);
+}
+```
+
+::: {.fragment}
+**Simple. Correct for one job. Breaks with two:** the activities serialize and
+neither runs at its intended rate.
+:::
+
+::: {.notes}
+Baseline. Have students predict the actual waveform before running it. The
+lesson: blocking calls cannot compose.
+:::
+
+## Rung 2 — `millis()` Non-Blocking State Machine {.smaller}
+
+```cpp
+#define LED_A 7
+#define LED_B 13
+static uint32_t tA, tB;
+
+void setup() {
+  pinMode(LED_A, OUTPUT);
+  pinMode(LED_B, OUTPUT);
+}
+
+void loop() {
+  uint32_t now = millis();
+  if (now - tA >= 500) { tA = now; digitalWrite(LED_A, !digitalRead(LED_A)); }
+  if (now - tB >= 125) { tB = now; digitalWrite(LED_B, !digitalRead(LED_B)); }
+}
+```
+
+::: {.fragment}
+**Both rates run independently — no blocking.** But this is **cooperative**:
+a long step anywhere still delays everyone, and there are no priorities.
+:::
+
+::: {.notes}
+This is the "manual scheduler" rung. It's genuinely good engineering for small
+N. The wall is complexity and jitter: the timing depends on how long loop()
+takes, and you must hand-manage every activity's state.
+:::
+
+## Rung 3 — A Hardware Timer ISR {.smaller}
+
+```cpp
+#define LED_A 7
+volatile bool tick_a = false;
+
+extern "C" void trap_handler(void) {
+  // mcause == machine-timer? re-arm mtimecmp, then:
+  tick_a = true;
+}
+
+void setup() {
+  pinMode(LED_A, OUTPUT);
+  // csrw mtvec, trap_handler; program mtimecmp; set mie.MTIE
+}
+
+void loop() {
+  if (tick_a) { tick_a = false; digitalWrite(LED_A, !digitalRead(LED_A)); }
+}
+```
+
+::: {.fragment}
+**Exact period, decoupled from `loop()`.** But: the ISR must be **short**, and
+`tick_a` is a shared variable — now we need **atomicity** (Q4).
+:::
+
+::: {.fragment}
+*Illustrative — the vendor core's timer API may differ; see the note.*
+:::
+
+::: {.notes}
+Mark as reasoned/not board-tested. The conceptual payload: interrupts give
+precise timing, and they immediately introduce the race problem. This rung is
+the bridge to the scheduler: the timer is exactly the mechanism FreeRTOS uses.
+:::
+
+## Rung 4 — Two FreeRTOS Tasks {.smaller}
+
+```c
+#include <FreeRTOS.h>
+#include <task.h>
+
+typedef struct { uint8_t pin; TickType_t half; } Blink;
+
+static void blink_task(void *arg) {
+  const Blink *b = (const Blink *)arg;
+  pinMode(b->pin, OUTPUT);
+  for (;;) {
+    digitalWrite(b->pin, HIGH); vTaskDelay(b->half);
+    digitalWrite(b->pin, LOW);  vTaskDelay(b->half);
+  }
+}
+
+void main_cvirtos(void) {
+  static const Blink fast = { 7, pdMS_TO_TICKS(125) };
+  static const Blink slow = { 13, pdMS_TO_TICKS(500) };
+  xTaskCreate(blink_task, "fast", 256, (void *)&fast, 2, NULL);
+  xTaskCreate(blink_task, "slow", 256, (void *)&slow, 1, NULL);
+  vTaskStartScheduler();
+}
+```
+
+::: {.fragment}
+**Two independent, blocking, prioritized flows.** No state machines; each task
+reads like the single-job sketch. The OS supplies the concurrency.
+:::
+
+::: {.notes}
+The payoff. Same logic as Rung 1, but each task can block without hurting the
+other, and priority encodes importance. Note main_cvirtos replaces setup/loop
+in the vendor port. pinMode/digitalWrite are shown for continuity; a real
+vendor FreeRTOS image uses its GPIO driver.
+:::
+
+## The Ladder Compared {.smaller}
+
+| | Rung 1 `delay` | Rung 2 `millis` | Rung 3 ISR | Rung 4 FreeRTOS |
+|---|---|---|---|---|
+| Two independent rates | ✗ | ✓ | ✓ | ✓ |
+| Blocks the CPU | **yes** | no | no | **no** |
+| Priority | ✗ | ✗ | ✗ | **✓** |
+| Determinism | poor | load-dependent | **good** | **good** |
+| Shared-data safety | n/a | n/a | **manual** | **provided** |
+| RAM cost | minimal | minimal | small | **per-task stack** |
+| Code complexity | lowest | medium | medium | **higher upfront** |
+
+::: {.fragment}
+> Capability rises, complexity rises, and so does the **footprint**. That is
+> the whole trade-off, on one slide.
+:::
+
+::: {.notes}
+Use this as the discussion anchor. Ask: at which rung would you stop for a
+given product? The answer depends on concurrency count, timing guarantees, and
+RAM. There is no universally right rung.
+:::
+
+# Part V — Where It Runs: The Platform
+
+## The Vendor FreeRTOS Port {.smaller}
+
+The Sophgo SDK ships a **FreeRTOS little-core port** under
+`freertos/cvitek/`:
+
+- built by a multi-stage CMake/Ninja pipeline into **`cvirtos.bin`**,
+- loaded at the **same carveout** as our Arduino sketches: `0x9fe0_0000`,
+- either pre-loaded by **BL2** at boot, or loaded at runtime by **remoteproc**,
+- entry point **`main_cvirtos()`** → create tasks → `vTaskStartScheduler()`.
+
+::: {.fragment}
+> The Arduino sketch and the RTOS image are the **same delivery mechanism**.
+> FreeRTOS is simply a richer program loaded the same way.
+:::
+
+::: {.notes}
+This is the continuity with the earlier hints. Same address, same remoteproc
+flow; the difference is what's inside the image. The toolchain is
+riscv64-unknown-elf (bare-metal, --specs=nosys.specs), just like the Arduino
+core's.
+:::
+
+## The Linux Bridge {.smaller}
+
+Cooperation happens through real hardware:
+
+```text
+Linux (C920)                    Little core (C906L)
+    │                                   │
+    │  mailbox 0x0190_0000  ────────►  interrupt
+    │                                   │
+    │  virtio rings (vdev0vring0/1, vdev0buffer) in reserved memory
+    │                                   │
+    │  RPMsg message  ──────────────►  CMDQU task wakes
+    │                                   │
+    │  ◄──────────────  response over RPMsg
+```
+
+::: {.fragment}
+The vendor **`rtos_cmdqu`** layer packages this as a command queue; the
+high-priority **CMDQU task** dispatches commands to the right FreeRTOS task.
+:::
+
+::: {.notes}
+Mailbox at 0x01900000, virtio rings in reserved-memory (vdev0buffer,
+vdev0vring0/1), RPMsg on top. This is the OS-service payoff: instead of
+polling magic addresses, Linux sends a message and a task is scheduled. The
+CMDQU task is priority 5 in the vendor port.
+:::
+
+## Why This Is the Payoff {.smaller}
+
+Compare the two worlds for "make the little core do X":
+
+::: {.columns}
+::: {.column width="50%"}
+**Raw, no OS**
+
+- agree on a magic address,
+- poll it in a superloop,
+- hand-roll a ring buffer,
+- get memory fences right,
+- no priorities, no timeouts,
+- a stray write can corrupt Linux.
+:::
+::: {.column width="50%"}
+**With an RTOS**
+
+- Linux sends an **RPMsg**,
+- a **task** wakes and handles it,
+- **queues** move the data,
+- the **scheduler** prioritizes work,
+- **blocking** APIs give timeouts,
+- components are isolated by design.
+:::
+:::
+
+::: {.fragment}
+> The OS is what turns a clever bare-metal hack into a **system**.
+:::
+
+::: {.notes}
+Land the "why an OS on a secondary core" answer with the concrete Linux
+integration. This is also a callback to physical-memory.md's warning about
+unrestricted writes.
+:::
+
+## Tying It Back to the Arduino Hints {.smaller}
+
+The path you already have:
+
+1. **Blink / Blink4** — superloop on the little core via remoteproc.
+2. **GpioAsm / GpioAsmRaw** — the same pin from raw RISC-V asm, no OS.
+3. **Physical memory** — why M-mode has no isolation.
+4. **This deck** — why, despite all that, you want an OS here.
+
+::: {.fragment}
+The examples `BlinkMillis`, `BlinkTimerISR`, and `BlinkRtos` in this repo walk
+the four-rung ladder. *(Rungs 2–4 are reasoned, not yet board-tested.)*
+:::
+
+::: {.notes}
+Point students at the repo. The verification standard in this project is
+explicit: mark what is proven on hardware vs. reasoned. Rung 1 is proven; the
+rest are teaching artifacts until tested.
+:::
+
+# Part VI — Synthesis & Lab Ladder
+
+## What We Actually Learned {.smaller}
+
+- An OS is **a bundle of answers to coordination problems**: tasks, timing,
+  priority, synchronization, abstraction, IPC.
+- Those problems appear **the moment you have more than one activity** — even
+  on a tiny core.
+- **Real-time means deterministic**, and an RTOS *increases* determinism.
+- Linux **cannot run** on the little core (no MMU, 2 MB, M-mode), so the only
+  OS that fits is a **real-time kernel**.
+- An RTOS turns the core from "can do anything" into **"a component you can
+  rely on."**
+- It is **not free**: stacks, ticks, complexity. Know when the superloop is
+  enough.
+
+::: {.notes}
+Recap the arc. The central claim: OS services are not a big-machine luxury;
+they are the natural response to concurrency and timing anywhere.
+:::
+
+## Lab Ladder & Discussion {.smaller}
+
+**Lab ladder** (climb it on the DuoS):
+
+1. Run `Blink` and `Blink4`; measure the pad with the `/dev/mem` sampler.
+2. Rewrite as `BlinkMillis`; prove two rates coexist.
+3. Add a timer ISR; measure jitter vs. `millis()`.
+4. Build/load a FreeRTOS image; run two prioritized blink tasks.
+5. Send an RPMsg command from Linux; handle it in a task.
+
+::: {.fragment}
+**Discuss:**
+
+- Where is the line between "a state machine is fine" and "I need an RTOS"?
+- What does a **priority inversion** look like, and how does a mutex fix it?
+- Why is "no OS because real-time" usually a **misunderstanding**?
+- What breaks when two cores share DRAM **without** cache coherency?
+:::
+
+::: {.notes}
+Close with the judgment theme. The best answer to "do I need an OS?" is a
+question back: how many concurrent, timing-constrained, sharing activities do
+you have? Reference refs.md for sources and next reading.
+:::

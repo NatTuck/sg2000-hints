@@ -24,6 +24,13 @@ CS 4250 — Computer Architecture.
 - [SG2000 Boot Sequence](boot-slides/index.qmd) — from cold silicon to user space.
 - [Boot Sequence — Reference Notes](boot-slides/refs.md) — a condensed version.
 
+## Why an OS? (FreeRTOS)
+
+- [Why an OS? From Blink to FreeRTOS on the SG2000 Little Core](freertos-slides/index.qmd) —
+  motivating OS services on a real-time secondary core: six coordination
+  problems and the services that answer them.
+- [Why an OS? — Reference Notes](freertos-slides/refs.md) — a condensed version.
+
 ## Oz64 Port
 
 - [Porting the SG2000 Debian Image to the Oz64](oz64-image-slides/index.qmd) —
