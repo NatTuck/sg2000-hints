@@ -36,3 +36,9 @@ CS 4250 — Computer Architecture.
 - [Porting the SG2000 Debian Image to the Oz64](oz64-image-slides/index.qmd) —
   device tree changes and getting the AIC8800DC WiFi working.
 - [Oz64 Port — Reference Notes](oz64-image-slides/refs.md) — a condensed version.
+
+## I²C
+
+- [I²C: Two Wires, Many Chips](i2c-slides/index.qmd) —
+  from a serial protocol to driving an SSD1306 OLED on the SG2000/Oz64.
+- [I²C — Reference Notes](i2c-slides/refs.md) — a condensed version.

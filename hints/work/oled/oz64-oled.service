@@ -1,0 +1,11 @@
+[Unit]
+Description=Route SoC IIC3 to the Oz64 GPIO header for the I2C OLED
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/oz64-oled-setup.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

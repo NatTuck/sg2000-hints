@@ -26,6 +26,10 @@ website:
         menu:
           - oz64-image-slides/index.qmd
           - oz64-image-slides/refs.md
+      - text: I2C
+        menu:
+          - i2c-slides/index.qmd
+          - i2c-slides/refs.md
   search: true
 
 format:
