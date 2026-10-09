@@ -14,6 +14,7 @@ website:
         menu:
           - hints/setup.md
           - hints/fishwaldo-arduino.md
+          - hints/i2c.md
       - text: Boot Slides
         menu:
           - boot-slides/index.qmd
