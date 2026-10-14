@@ -1,0 +1,1118 @@
+---
+title: "Beyond the CPU"
+subtitle: "Clocks, Power, DMA, and the Engines on the SG2000"
+author: "CS 4250 — Computer Architecture"
+date: today
+format:
+  revealjs:
+    theme: [default, custom.scss]
+    slide-number: true
+    incremental: false
+    controls: true
+    progress: true
+    hash: true
+    center: false
+    code-line-numbers: true
+    chalkboard: true
+    footer: "CS 4250 · Beyond the CPU — SG2000"
+    preview-links: auto
+    fig-align: center
+    width: 1280
+    height: 800
+    margin: 0.08
+---
+
+## Roadmap {.smaller}
+
+The CPU is a small part of the die. This deck is about the machine *around* it.
+
+**Framing**
+
+1. A tour of what else is on the chip
+2. Three questions the CPU can't answer alone
+
+**Mechanisms**
+
+3. **Clocks** — the PLLs and the clock tree
+4. **Power** — domains, reset, and the always-on island
+5. **Data movement** — DMA, the engine that moves bytes for you
+6. **Memory** — carveouts, ION, and cache, from software's view
+
+**Context**
+
+7. The engine zoo (quick) — TPU, VPU, ISP, IVE
+8. Synthesis and the lab ladder
+
+::: {.notes}
+Frame the deck: we have spent three decks on the CPUs and the boot chain. Now
+the rest of the silicon. The through-line is "the CPU is not the only thing that
+does work, and it is not the thing that decides how fast it runs."
+:::
+
+# Part 0 — Framing
+
+## What Else Is On the Die {.smaller}
+
+The SG2000 is `2 x C906 + 1 x A53 + 1 x 8051` — *plus* a pile of engines:
+
+| Engine | Job | In our images |
+|---|---|---|
+| **TPU** | 0.5 TOPS INT8 neural net | yes — **lab later** |
+| **VPU** | H.264/H.265 encode+decode, JPEG | yes (`firmware-vcodec`) |
+| **ISP / VI** | camera pipeline | yes — **later deck** |
+| **VPSS / IVE / DWA / RGN** | scale, crop, dewarp, OSD | yes (`cvitek-osdrv`) |
+| **SDMA** | 8-channel data mover | yes |
+| **USB / Eth / I2S** | I/O | yes |
+| **RTC + MCU domain** | the always-on island | yes (idle) |
+
+::: {.fragment}
+Three of the four CPUs are ours. The engines are mostly *dataflow* hardware —
+you point them at buffers, and DMA feeds them.
+:::
+
+::: {.notes}
+This is the map for the whole deck. Point at the two boxes that get their own
+labs (TPU, ISP) and say we will only name them today. Everything else we will
+actually look at: clocks, power, DMA, memory.
+:::
+
+## The CPU Is the Tip of the Iceberg {.smaller}
+
+On a modern SoC the CPU is a few percent of the transistors. Everything else is:
+
+- **Clock generation** — PLLs that turn one 25 MHz crystal into 8 clocks.
+- **Power management** — domains, rails, and an always-on island that never sleeps.
+- **Data movers** — engines that copy bytes without the CPU.
+- **Fixed-function engines** — the accelerators (TPU, VPU, ISP, …).
+
+::: {.fragment}
+The architectural questions this raises:
+
+- *How fast does anything run?* → the clock tree.
+- *What stays alive?* → the power domains.
+- *Who moves the data?* → the DMA engine.
+:::
+
+::: {.notes}
+Set up Parts I–III as the three questions. The engines (Part V) are the payoff
+of "who does the work".
+:::
+
+## Three Questions the CPU Can't Answer Alone {.smaller}
+
+::: {.fragment}
+**1. How is it clocked?**
+
+One 25 MHz crystal in; eight PLLs, a mux tree, and dozens of dividers out.
+Every block runs at a frequency *someone chose*.
+:::
+
+::: {.fragment}
+**2. How is it powered?**
+
+Two power domains, a three-level reset hierarchy, and a piece of silicon that
+stays awake when everything else is off.
+:::
+
+::: {.fragment}
+**3. How does data move without the CPU?**
+
+Programmed I/O and interrupts both cost the CPU a word at a time. The DMA engine
+doesn't.
+:::
+
+::: {.notes}
+This is the spine of the deck. Each part answers one question, and each has a
+demo.
+:::
+
+## What We Are *Not* Doing Today {.smaller}
+
+Two engines get their own labs, so today they are one-liners:
+
+- **TPU** (0.5 TOPS INT8) — *the TPU lab.*
+- **Camera / ISP pipeline** — *a later deck.*
+
+::: {.fragment}
+Everything else in the deck we will look at for real:
+
+- the clock tree and a live clock read
+- the RTC always-on domain (and the 8051 that lives there)
+- a DMA transfer, described down to the registers
+- carveouts, ION, and cache coherency
+:::
+
+::: {.notes}
+Manage expectations up front. The TPU and the ISP are the flashiest demos on the
+chip; deferring them keeps this deck about *mechanism*.
+:::
+
+# Part I — Clocks
+
+## One Crystal, Eight PLLs {.smaller}
+
+The chip has exactly **two** clock inputs:
+
+| Input | Frequency | Feeds |
+|---|---|---|
+| `XTAL_XIN` | **25 MHz** crystal | every PLL, and `clk_xtal_*` |
+| `RTC_XIN` | **32.768 kHz** crystal | the always-on RTC |
+
+Everything else is *derived*. Eight PLLs multiply the 25 MHz up to hundreds of
+MHz (TRM Table 8.1):
+
+| PLL | Preset | Type | PLL | Preset | Type |
+|---|---|---|---|---|---|
+| `FPLL` | 1500 MHz | int | `APLL` | 1050 MHz | int/frac |
+| `MPLL` | 1000 MHz | int/frac | `CAM0PLL` | 1050 MHz | int/frac |
+| `TPLL` | 1400 MHz | int/frac | `CAM1PLL` | 1025 MHz | int/frac |
+| `MIPIMPLL` | 900 MHz | int | `DISPPLL` | 1200 MHz | int/frac |
+
+::: {.notes}
+The names are *roles*, not fixed frequencies: FPLL feeds the CPU/AXI fabric,
+MPLL the media, TPLL the TPU, APLL the audio, CAMxPLL the camera, DISPPLL the
+display. Each can be integer or fractional; fractional lets you hit non-integer
+ratios (e.g. for audio or display pixel clocks).
+:::
+
+## The Clock Tree {.smaller}
+
+```text
+   25 MHz XTAL ─┬─────────────────────────────────────────────► clk_xtal_*
+                │
+                ├─► FPLL 1500 ─┬─ /2 ─► clk_a53        750 MHz
+                │              ├─ /3 ─► clk_cpu_axi0   500 MHz
+                │              ├─ /3 ─► clk_tpu        500 MHz
+                │              ├─ /5 ─► clk_cpu_gic    300 MHz
+                │              └─ /5 ─► clk_axi4       300 MHz
+                │                          └─ /3 ─► clk_axi6   100 MHz
+                ├─► TPLL/APLL/MIPIMPLL/CAMxPLL/DISPPLL ─► (media, audio, cam, display)
+                └─► … dozens of leaf clocks, each with a divider
+
+   32.768 kHz RTC_XIN ───────────────────────────────────────► RTC
+```
+
+::: {.fragment}
+Read it right-to-left: **every block names a parent and a divide**. The leaf
+names are in the DT (`clocks = <&clk CV181X_CLK_…>`).
+:::
+
+::: {.notes}
+The full table is TRM Table 8.4 — ~90 leaf clocks. Do not read it aloud; the
+point is the *shape*: XTAL → PLL → mux → divider → leaf. Diagram 8.2 in the TRM
+is the canonical picture; this ASCII version is a reconstruction.
+:::
+
+## The PLL Is Programmable {.smaller}
+
+An integer PLL is `VCO = REF x Div_sel / Pre_div_sel`, `FOUT = VCO / Post_div_sel`
+(TRM Table 8.2):
+
+| Parameter | Range | Constraint |
+|---|---|---|
+| `PLL_REF` | 25–2500 MHz | input |
+| `PLL_VCO` | 800–2500 MHz | the VCO must land in band |
+| `Pre_div_sel` / `Div_sel` / `Post_div_sel` | 1–127 / 6–127 / 1–127 | multipliers |
+| `Ictrl`, `Mode` | 0–7, 0–3 | loop filter; must satisfy `0.2 < 1.84(1+Mode)(1+Ictrl)/2/Div_sel ≤ 0.35` |
+
+Tuning an integer PLL (TRM §8.4.1):
+
+1. **Park the consumers** — switch them to XTAL or another PLL first.
+2. Write `*_pll_csr`.
+3. Clear `*_pll_pwd`.
+
+::: {.fragment}
+> You cannot retune a PLL under a running consumer. The rule "turn off the clock
+> before you touch the PLL" is the same discipline as the reset rule later.
+:::
+
+::: {.notes}
+Fractional PLLs add `*_ssc_syn_*` (spread-spectrum / synthesizer) registers and a
+`*_ssc_syn_up` toggle to latch a new ratio. Keep this slide about the *idea*:
+the PLL is a programmable multiplier with a legal operating window.
+:::
+
+## Gating, Dividing, and Bypassing {.smaller}
+
+Every leaf clock has three knobs (TRM §8.5):
+
+| Knob | Register(s) | What it does |
+|---|---|---|
+| **Gate** | `clk_en_0` … `clk_en_4` | turn the leaf clock on/off (one bit per clock) |
+| **Divide** | `div_clk_<name>` | set the divisor; some also pick a `clk_src` group (`DIV_IN0`/`DIV_IN1`) |
+| **Bypass** | `clk_byp_0` / `clk_byp_1` | route the leaf straight to XTAL |
+
+```text
+clk_en_0   0x0300_2000 + 0x000      clk_byp_0  0x0300_2000 + 0x030
+clk_en_1   + 0x004                  clk_byp_1  + 0x034
+clk_en_2   + 0x008                  clk_sel_0  (DIV_IN0 vs DIV_IN1)
+clk_en_3   + 0x00c
+clk_en_4   + 0x010
+```
+
+::: {.fragment}
+A few clocks (the CPUs) have **two** divider registers — `div_clk_c906_0_0` and
+`div_clk_c906_0_1` — because they can select between two source groups.
+:::
+
+::: {.notes}
+The `clk_en` bits are what the Linux clock driver and runtime-PM flip. That is
+the register behind the I2C deck's surprise — "the block reads 0 because its
+clock is gated."
+:::
+
+## Clock Domains Are an Interface {.smaller}
+
+A peripheral's clock is part of its *interface*, not an implementation detail:
+
+- If the block's clock is **gated**, its registers read as **0** (or garbage).
+  This is exactly what bit the I2C work: a userspace `mmap` of the DesignWare
+  controller saw `IC_STATUS = 0` until the kernel ungated it.
+- Runtime power management is, at bottom, **clock gating plus power gating**.
+
+::: {.fragment}
+> "The hardware is memory-mapped" is necessary, not sufficient. **The clock is
+> part of the interface.**
+:::
+
+::: {.notes}
+Callback to `i2c-slides` "Surprise: userspace cannot just poke the controller".
+This is the general lesson that slide was a special case of.
+:::
+
+## The Linux View {.smaller}
+
+The kernel models the whole tree with the **common clock framework**:
+
+- A **clock provider** (`compatible = "cvitek,cv181x-clk"`) registers every clock.
+- Each **consumer** names its clock(s) in the DT: `clocks = <&clk CV181X_CLK_SPI>`.
+- `clk_prepare_enable()` / `clk_disable_unprepare()` gate; `clk_set_rate()` retunes.
+
+```sh
+# the whole tree, live:
+cat /sys/kernel/debug/clk/clk_summary
+#    clock                 enable_cnt  prepare_cnt  rate      accuracy phase
+#    clk_a53                       1            1  750000000  ...
+#    clk_tpu                       0            0  500000000  ...
+```
+
+::: {.fragment}
+`CONFIG_DEBUG_FS=y` is set in our images, so `clk_summary` should exist — but
+**verify on the board**: the `duos`/`oz64` defconfigs do *not* obviously enable
+`CONFIG_CPU_FREQ` or a common-clock driver by name.
+:::
+
+::: {.notes}
+Be honest: the demo may be read-only on our images. Reading the tree works if the
+clk driver registers debugfs; changing a rate needs `clk_set_rate` consumers (a
+cpufreq driver) which our defconfigs may lack. Fallback: read the CLKGEN
+registers via `/dev/mem`.
+:::
+
+## Demo: Read the Clock Tree {.smaller}
+
+```sh
+# What is the CPU actually running at?
+cat /sys/kernel/debug/clk/clk_summary | head
+
+# Is a peripheral clock gated?
+grep -E "clk_spi|clk_tpu|clk_axi4" /sys/kernel/debug/clk/clk_summary
+```
+
+Expected (per TRM Table 8.4 defaults):
+
+| Clock | Parent / div | Rate |
+|---|---|---|
+| `clk_a53` | `fpll / 2` | 750 MHz |
+| `clk_cpu_axi0` | `fpll / 3` | 500 MHz |
+| `clk_tpu` | `fpll / 3` | 500 MHz |
+| `clk_axi4` | `fpll / 5` | 300 MHz |
+| `clk_axi6` | `fpll / 15` | 100 MHz |
+| `clk_spi` | `fpll / 8` | 187.5 MHz |
+| `clk_pwm_src` | `fpll / 10` | 150 MHz |
+
+::: {.notes}
+Verify: does `/sys/kernel/debug/clk/clk_summary` exist on the board? If not, the
+fallback is to read `div_clk_*` via `/dev/mem` and compute the ratios by hand —
+which is itself a good exercise.
+:::
+
+## Key Idea {.smaller}
+
+> The clock tree is a **programmable structure**, not a constant.
+
+- One 25 MHz crystal → 8 PLLs → a mux/divide tree → ~90 leaf clocks.
+- Every frequency is a **decision** someone made at boot.
+- A block's clock is part of its interface: gate it and the block disappears.
+
+::: {.fragment}
+This is the first half of "how fast is the chip?" The second half is *how much
+power it burns to go that fast* — Part II.
+:::
+
+::: {.notes}
+Transition to power. Clocks and power are two sides of the same coin: you gate a
+clock to save power, and you gate power to save more.
+:::
+
+# Part II — Power & the Always-On Island
+
+## Two Power Domains {.smaller}
+
+The chip has two power domains (TRM §5.1.1):
+
+| Domain | Supply | Contents |
+|---|---|---|
+| **Active** | the ordinary SoC rail | CPUs, fabric, most peripherals, DDR |
+| **No-die** (`RTCSYS`) | `VDDIO_RTC` | RTC, WDT, ictl, GPIO, SARADC, IRRX, **and the MCU domain** |
+
+`RTCSYS` splits again into:
+
+- **AO (Always-On)** — RTC, WDT, interrupt controller, GPIO, SARADC, IRRX.
+- **MCU domain** (`VDDC_SW_MCU`) — the **8051 + 8 KB SRAM**, timers, SPI-NOR, mailbox, I²C, UART.
+
+::: {.fragment}
+The MCU domain can be powered off *independently*. The AO domain **never** goes
+away as long as `VDDIO_RTC` is present.
+:::
+
+::: {.notes}
+This is why the chip can "sleep": the Active domain drops, the No-die domain
+stays. Everything the wake logic needs lives on the always-on rail.
+:::
+
+## The Always-On Island: the RTC {.smaller}
+
+The RTC block (`RTC_CORE @ 0x0502_6000`) is a **hardware power state machine**
+plus counters and comparators. It runs off 32.768 kHz and stays alive.
+
+```text
+        ST_ON ──req_suspend──► ST_SUSP ──wake──► ST_ON
+          │                                          ▲
+          ├──req_shdn──────► ST_OFF ──power-up───────┤
+          ├──req_pwr_cyc───► ST_PWR_CYC ─────────────┤
+          └──req_warm_rst──► ST_WARM_RESET ──────────┘
+```
+
+Its state is readable: `rtc_fsm_st` = `RTC_CTRL_STATUS0[29:26]`.
+
+::: {.fragment}
+> The RTC is not a clock chip. It is the **root power controller** — the thing
+> that decides when the rest of the chip is allowed to exist.
+:::
+
+::: {.notes}
+The states are ST_ON / ST_OFF / ST_SUSP / ST_PWR_CYC / ST_WARM_RESET. The FSBL
+reads `RTC_ST_ON_REASON` on resume and, if the transition was ST_SUSP→ST_ON,
+takes a warm-boot shortcut (callback to the boot deck).
+:::
+
+## Requesting a Power Transition {.smaller}
+
+You don't command the RTC; you **request**, and each request is gated by an
+enable. `RTC_CTRL0 @ 0x0502_5008` (unlock via `RTC_CTRL0_UNLOCKKEY @ 0x0502_5004 = 0xAB18`):
+
+| Bit | Request | Gated by |
+|---|---|---|
+| 7 | `req_suspend` | `RTC_EN_SUSPEND_REQ` |
+| 0 | `req_shdn` (power off, incl. DDR) | `RTC_EN_SHDN_REQ` |
+| 3 | `req_pwr_cyc` | `RTC_EN_PWR_CYC_REQ` |
+| 4 | `req_warm_rst` | `RTC_EN_WARM_RST_REQ` |
+| 5/6 | `req_sw_wdg_rst` / `hw_wdg_rst_en` | `RTC_EN_WDG_RST_REQ` |
+| 1/2 | `req_sw_thm_shdn` / `hw_thm_shdn_en` | `RTC_EN_THM_SHDN` |
+
+::: {.fragment}
+The `RTC_EN_*` registers live in `RTC_CORE` (e.g. `RTC_EN_PWR_WAKEUP @ 0x0502_60BC`).
+The enables are the *safety interlock*: a request does nothing until its enable is set.
+:::
+
+::: {.notes}
+This "request + enable" split is a deliberate safety design: nothing can power
+off the chip unless software has explicitly armed that path.
+:::
+
+## Sleep and Wake {.smaller}
+
+The full suspend flow (TRM §6.4.6):
+
+1. Write `RTC_PG_REG = 0` — park the DDR I/O so DRAM survives power-off.
+2. Configure the wake sources: `RTC_EN_PWR_WAKEUP` (a bitmask).
+3. Write `req_suspend = 1`.
+4. …the chip powers down; the RTC watches the wake sources…
+5. On wake: write `RTC_PG_REG = 1` to release the DDR I/O, *then* re-init DRAM.
+
+Wake sources include `PWR_WAKEUP0/1`, `PWR_ON`, `PWR_BUTTON1`, `PWR_VBAT_DET`,
+and the **RTC alarm** (`RTC_ALARM_TIME` / `RTC_ALARM_ENABLE`).
+
+::: {.fragment}
+> On our images this whole path is driven by **Linux** (`cvitek,rtc`: `set_alarm`,
+> `alarm_irq_enable`, `suspend`/`resume`, `device_init_wakeup`). No firmware
+> needed.
+:::
+
+::: {.notes}
+`RTC_PG_REG` is the one non-obvious step: forget it and the DRAM data is
+corrupted across the power cycle. Good exam question.
+:::
+
+## Rail Sequencing and the Board {.smaller}
+
+The RTC also drives **`PWR_SEQ0..3`** with programmable timing
+(`RTC_UP_SEQ0..3`, `RTC_DN_SEQ0..3`, `RTC_UP_IF_EN`, `RTC_UP_RSTN`, `RTC_UP_MAX`).
+
+On the Duo S those nets go to the regulators:
+
+| Net | Duo S use |
+|---|---|
+| `PWR_SEQ1` | 0.9 V / 1.8 V MIPI rails |
+| `PWR_SEQ2` | MAIN +3.3 V |
+| `PWR_SEQ3` | 1.35 V |
+
+::: {.fragment}
+So the SoC sequences the *board's* rails as part of its own power-up/down — and
+the timing lives in RTC registers, not in the board's firmware.
+:::
+
+::: {.notes}
+From the Duo S schematic. This is why the always-on island matters beyond the
+SoC: it is the power sequencer for the whole board.
+:::
+
+## Reset Is Not Power {.smaller}
+
+Three reset levels (TRM §7.2):
+
+| Level | Scope | Trigger |
+|---|---|---|
+| **L1** | system power-on reset | POR, overheat, watchdog |
+| **L2** | system hard reset | watchdog, external `RSTN` pin (6.56 ms debounce) |
+| **L3** | soft resets (CRG) | software |
+
+L3 (`RSTGEN @ 0x0300_3000`) is what software uses:
+
+| Register | Offset | Effect |
+|---|---|---|
+| `SOFT_RSTN_0..3` | `0x000..0x00c` | per-module soft reset (active low) |
+| `SOFT_CPUAC_RSTN` | — | reset the processor subsystem |
+| `SOFT_CPU_RSTN` | — | reset the processor |
+
+::: {.fragment}
+Soft reset is **active-low and sticky**: write 0 to reset, then write 1 to
+release. And the rule from the DMA chapter: *make sure the module is idle first.*
+:::
+
+::: {.notes}
+Note the contrast with clock gating: reset is a *state* (held until released),
+gating is a *live* control. And "reset before you touch a module" mirrors "park
+the clock before you touch a PLL".
+:::
+
+## The 8051, Briefly {.smaller}
+
+Inside the No-die domain sits a **fourth CPU**: an **8051 microcontroller**
+(TRM ch. 14).
+
+| Feature | Value |
+|---|---|
+| ISA | standard 8051 (8-bit) |
+| Clock | 25–300 MHz |
+| Code | 8 KB AHB SRAM, or a DDR carveout; banking to 4 MB |
+| Peripherals | RTC GPIO/I²C/UART/SARADC/IRRX/SPI-NOR, timers, WDT, 2× mailbox |
+| Idle | ~200 µA in "MCU-Only" mode |
+
+It exists to be the **always-on supervisor**: run while the AP is off, watch wake
+conditions, and bring the system back.
+
+::: {.notes}
+This is the chip's *intended* power-policy engine — a programmable alternative
+to the fixed RTC state machine. Now the punchline.
+:::
+
+## "Capability ≠ Usable" {.smaller}
+
+Our images hold the 8051 **in reset** and ship **no firmware** for it:
+
+- No `mars_mcu_fw.bin`, no `8051_up`, no SDCC project — not in the SDK, not in the FIP.
+- No DDR carveout for it in `memmap.py`.
+- No Linux driver.
+- Its I/O is the **`PWR_*` power-management nets**, not header pins.
+
+::: {.fragment}
+> The SG2000 has **four CPUs**. We use three. The fourth is real, always-on, and
+> *unreachable in practice* — a job (software-defined power policy) that Linux
+> already does here.
+:::
+
+::: {.notes}
+This is the same lesson as the I2C deck's pinmux trap — "enabled ≠ routed" — one
+level up: **capability on the die ≠ capability you can use.** Worth a discussion
+prompt. (You *can* load ≤8 KB firmware at runtime via `/dev/mem`; it is just not
+worth a lab.)
+:::
+
+## Key Idea {.smaller}
+
+> Power is a **hardware mechanism** plus a **policy layer**.
+
+- **Mechanism:** the RTC state machine, the reset hierarchy, the rail sequencer.
+- **Policy:** *who decides when to suspend, and what may wake it* — Linux on our
+  images, or the 8051 if you build it.
+- The mechanism is always-on silicon; the policy is software.
+
+::: {.fragment}
+Next: the third question — *who moves the data?*
+:::
+
+::: {.notes}
+Close Part II. The mechanism/policy split is the takeaway; it is the same split
+as "clock tree (mechanism) vs who sets the rate (policy)".
+:::
+
+# Part III — Data Movement
+
+## The Cost of Moving a Byte {.smaller}
+
+Three ways to get data from A to B, in increasing sophistication:
+
+| Mechanism | Who touches each word | CPU cost |
+|---|---|---|
+| **Programmed I/O** | the CPU, in a loop | 1 load + 1 store per word |
+| **Interrupt-driven** | the CPU, one word per IRQ | worse — plus trap overhead |
+| **DMA** | an engine | ~0 — the CPU sets up a descriptor |
+
+::: {.fragment}
+The CPU is the most *general* and the most *expensive* way to move bytes. DMA is
+the cheapest, because the CPU stops being in the loop.
+:::
+
+::: {.notes}
+This is the classic three-way. Make the point that interrupts are *worse* than
+polling for bulk copy — the trap per word dwarfs the copy. DMA exists precisely
+because both CPU-driven methods pay per word.
+:::
+
+## Programmed I/O: the CPU Does Every Word {.smaller}
+
+```c
+for (size_t i = 0; i < n; i++)
+    dst[i] = src[i];        /* one load, one store, per word */
+```
+
+- Every word costs an instruction **and** a memory access.
+- Throughput is bounded by the CPU's load/store rate, not by the memory.
+- The CPU is *busy* for the whole transfer — it can do nothing else.
+
+::: {.fragment}
+For a `memcpy` this is fine. For a 1080p frame (≈ 3 MB) it is a disaster: the CPU
+spends milliseconds doing nothing but copying.
+:::
+
+::: {.notes}
+Keep the frame example: a camera or display pipeline moves megabytes per frame;
+CPU copies would consume the whole core.
+:::
+
+## Interrupt-Driven: Still Per-Word {.smaller}
+
+An interrupt tells you *when* a device has a word ready — it does not remove the
+CPU from the copy.
+
+```text
+device raises IRQ  ─►  trap to handler  ─►  read word  ─►  store word  ─►  return
+      (every single word)
+```
+
+- Trap entry/exit costs far more than the copy itself.
+- Only makes sense for **slow, unpredictable** events (a keypress), not bulk data.
+
+::: {.fragment}
+> Interrupts are for *notification*, not for *transfer*. Using them to move bulk
+> data is a classic performance mistake.
+:::
+
+::: {.notes}
+Contrast: a UART byte arriving is an event → IRQ is right. A 3 MB frame is bulk →
+DMA is right.
+:::
+
+## DMA: an Engine Moves It {.smaller}
+
+The CPU writes a **descriptor** (source, destination, length) and enables the
+channel. The DMAC does the rest — and can be *fed by* a peripheral's request
+line, so the transfer happens at the device's pace.
+
+```text
+ CPU: write SAR, DAR, BLOCK_TS, CTL ─► set ChEnReg ─► (free!)
+ DMAC: reads source, writes destination, counts down, raises IRQ at the end
+```
+
+::: {.fragment}
+The CPU's cost drops from *per word* to *per transfer*.
+:::
+
+::: {.notes}
+The descriptor is the key abstraction: a transfer becomes data the CPU *writes
+down* rather than work the CPU *does*.
+:::
+
+## The SG2000's DMA Controller {.smaller}
+
+TRM ch. 11: a Synopsys DesignWare DMAC (`snps,dmac-bm`, base **`0x0433_0000`**).
+
+| Feature | Value |
+|---|---|
+| Channels | **8**, independent, with priorities |
+| Directions | RAM→RAM, RAM→device, device→RAM, device→device |
+| Burst | configurable burst length; block + single transfers |
+| Linked list | hardware scatter-gather (`LLP`) |
+| Security | per-channel `awprot`/`arprot` (AXI) |
+
+It reaches memory and these peripherals:
+`UART0–4`, `I²C0–4`, `SPI0–3`, `SPI_NAND`, `I2S0–3`.
+
+::: {.notes}
+"bm" = bus-matrix: the DMAC is a bus master, not a slave peripheral. That is what
+lets it move data with the CPU out of the loop.
+:::
+
+## Peripheral Request Lines {.smaller}
+
+Each of the 8 channels is **wired to one peripheral request** by the system
+controller (`sdma_dma_ch_remap0/1`). TRM Table 9.1 lists 42 request lines:
+
+| # | Line | # | Line |
+|---|---|---|---|
+| 0/1 | `i2s0` rx/tx | 24/25 | `i2c0` rx/tx |
+| 8/9 | `uart0` rx/tx | 26/27 | `i2c1` rx/tx |
+| 16/17 | `spi0` rx/tx | 38 | `spi_nand` |
+| 34/35 | `tdm0` rx/tx | 39 | `spi_nor` |
+
+Configuration: write the remap register, then write 1 to
+`update_dma_remap_0_3` / `_4_7` to latch it.
+
+::: {.fragment}
+> Multiple channels may not map to the same request line. The 8 channels are a
+> *pool* you assign to whichever devices need them.
+:::
+
+::: {.notes}
+This is the "who is allowed to ask the DMA to move data" wiring. A UART with a
+DMA channel gets byte-at-a-time transfers without an IRQ per byte.
+:::
+
+## A Descriptor, Field by Field {.smaller}
+
+`CHx_CTL @ +0x118` is the interesting one:
+
+| Field | Bits | Meaning |
+|---|---|---|
+| `SRC_TR_WIDTH` / `DST_TR_WIDTH` | 10:8 / 13:11 | transfer width (0 = 8b, 1 = 16b, 2 = 32b, 3 = 64b) |
+| `SRC_MSIZE` / `DST_MSIZE` | 17:14 / 21:18 | burst length |
+| `TT_FC` | 34:32 | transfer type / flow control |
+| `ShadowReg_Or_LLI_Valid`, `LLI_Last` | — | linked-list control |
+
+Sizes follow from those (TRM §11.3.3):
+
+```text
+src_burst_bytes = SRC_MSIZE * (SRC_TR_WIDTH / 8)
+block_bytes     = BLOCK_TS  * (SRC_TR_WIDTH / 8)     # when the DMAC controls flow
+```
+
+::: {.notes}
+The worked example in the TRM uses `DST_TR_WIDTH = 0x2` (32-bit), `DST_MSIZE = 0x0`
+(burst 1), `BLOCK_TS = TRAN_NUM/4 - 1` for a memory-to-memory move. Note the
+width-vs-burst distinction: width is how many bytes per beat, burst is how many
+beats per request.
+:::
+
+## Basic vs Linked-List Transfer {.smaller}
+
+**Basic** (TRM §11.4.3) — one contiguous block:
+
+```text
+idle channel = DMAC_ChEnReg
+SRC_MULTBLK_TYPE = DST_MULTBLK_TYPE = 0x0     # contiguous
+TT_FC = 0x0                                   # memory -> memory
+CHx_SAR, CHx_DAR, CHx_BLOCK_TS, CHx_CTL = ...
+DMAC_ChEnReg = 0x1                            # go
+poll BLOCK_TFR_DONE (or IRQ) ─► DMAC_ChEnReg = 0x0
+```
+
+**Linked-list** (TRM §11.4.4) — scatter-gather across many blocks:
+
+```text
+SRC/DST_MULTBLK_TYPE = 0x3
+CHx_LLP = <address of first node>
+each node carries the next node's address; the last node clears LLI_Last
+```
+
+::: {.fragment}
+> A linked list turns "copy these 100 scattered blocks" into **one** channel
+> enable. The CPU touches the descriptor list, not the data.
+:::
+
+::: {.notes}
+This is the abstraction that makes scatter-gather possible — e.g. a network
+stack building a packet from many buffers. The DMA engine walks the list itself.
+:::
+
+## Demo: the memcpy Benchmark {.smaller}
+
+The lab: copy a buffer N ways and measure throughput **and** CPU time.
+
+```sh
+# if the DMAC is registered with dmaengine:
+ls /sys/class/dma            # dma0chan0 … dma0chan7 ?
+# the kernel's built-in benchmark, if CONFIG_DMATEST is set:
+modprobe dmatest
+echo 4096 > /sys/module/dmatest/parameters/transfer_size
+echo 200  > /sys/module/dmatest/parameters/iterations
+echo 1    > /sys/module/dmatest/parameters/run
+dmesg | tail                # MB/s
+```
+
+Compare with a userspace `memcpy` loop: DMA should win on **CPU%** even when it
+loses on raw throughput for small blocks.
+
+::: {.fragment}
+**Verify first:** our `duos`/`oz64` defconfigs set `CONFIG_DMADEVICES=y` but do
+**not** obviously enable a DMAC driver or `CONFIG_DMATEST`. If `/sys/class/dma`
+is empty, the lab needs a small out-of-tree driver — or we scope it to *reading*
+the descriptor registers.
+:::
+
+::: {.notes}
+Be honest about the open question. If dmatest is unavailable, an alternative lab
+is to write the descriptor by hand via /dev/mem (like the GPIO decks do) and
+watch `CHx_SSTAT`/`CHx_DSTAT` advance — a "DMA from first principles" exercise.
+:::
+
+## The Coherency Wrinkle {.smaller}
+
+DMA moves bytes **behind the CPU's cache**. That is the whole point — and the
+whole problem:
+
+- The CPU writes a buffer; the dirty lines sit in **cache**, not DRAM.
+- You start a DMA from that buffer → it reads **stale DRAM**.
+- Or: DMA writes DRAM; the CPU reads a **stale cached line**.
+
+The kernel handles this with the DMA API (`dma_map_*` / `dma_sync_*`), which
+does the cache maintenance for you. **Bare-metal** code has to do it by hand.
+
+::: {.fragment}
+The little C906 is **not cache-coherent** with the Linux core (see
+`physical-memory.md`). Shared buffers between the two need explicit cache ops —
+or an uncached mapping.
+:::
+
+::: {.notes}
+This is the deep architectural lesson of the DMA part: a bus master that bypasses
+the cache forces you to reason about *where the truth lives*. Ties straight to
+the physical-memory hint's cache-coherency caveat.
+:::
+
+## Peripheral DMA Is Everywhere {.smaller}
+
+Once you have a DMAC, peripherals lean on it:
+
+| Peripheral | Uses DMA for |
+|---|---|
+| **SD/eMMC** (SDHCI) | block transfers via `SDMA_SADDR` / ADMA2 descriptor tables |
+| **I²S / audio** | continuous sample streaming |
+| **SPI / UART** | FIFO fill/drain without an IRQ per byte |
+| **Video** | frames into/out of the encoders |
+
+::: {.fragment}
+The boot deck already showed SDHCI's DMA path (`SDMA_SADDR` is a **physical**
+address — the controller DMAs straight into SRAM/DRAM). Same idea, different
+engine.
+:::
+
+::: {.notes}
+Callback to the boot deck's "How SDHCI works". The point: DMA is not a feature
+of one peripheral; it is a shared infrastructure.
+:::
+
+## Key Idea {.smaller}
+
+> "Who moves the data" is an **architectural choice** with a measurable cost.
+
+- Programmed I/O and interrupts both pay **per word**.
+- DMA pays **per descriptor** — the CPU stops being in the loop.
+- The price is **coherency**: a bus master that bypasses the cache forces you to
+  think about where the truth lives.
+
+::: {.fragment}
+Next: where the buffers actually *are* — the software memory map.
+:::
+
+::: {.notes}
+Bridge to Part IV: DMA and carveouts are inseparable, because DMA targets
+physical addresses and the multimedia buffers live in reserved regions.
+:::
+
+# Part IV — Memory from Software's View
+
+## The Address Map, Reserved {.smaller}
+
+We saw the physical map in the boot deck. Now the question is **who owns what**:
+
+| Region | Base | Owner |
+|---|---|---|
+| BootROM | `0x0440_0000` | mask ROM |
+| CLKGEN / PLL | `0x0300_2000` | clock driver |
+| RSTGEN | `0x0300_3000` | reset driver |
+| SDMA | `0x0433_0000` | dmaengine |
+| DDR | `0x8000_0000` | Linux — *minus the carveouts* |
+
+::: {.fragment}
+Every peripheral is memory-mapped, but "memory-mapped" ≠ "yours". The kernel
+maps only what the DT describes.
+:::
+
+::: {.notes}
+Reinforce the recurring theme. The `/dev/mem` decks worked precisely because
+those blocks are *not* claimed by a driver.
+:::
+
+## Carveouts: What "512 MB" Really Means {.smaller}
+
+`memmap.py` + the DTS `reserved-memory` node reserve DRAM before Linux sees it:
+
+| Carveout | Purpose |
+|---|---|
+| `FREERTOS` (top 2 MB) | the C906L image window |
+| `monitor` (0x8000_0000) | OpenSBI |
+| `ION` (~74 MB) | multimedia heap |
+| `bootlogo` / `framebuffer` | the boot logo |
+| `rproc` / `vdev0*` | remoteproc + virtio rings (arduino builds) |
+
+```text
+512 MB total  −  FreeRTOS  −  ION  −  framebuffer  −  monitor  =  what Linux gets
+```
+
+::: {.fragment}
+This is why the same board reports different "RAM" depending on
+`SECOND_CPU=camera` vs `arduino` — the personality changes the map.
+:::
+
+::: {.notes}
+Callback to the Oz64 deck's "Second-CPU policy". The memory map is a *build-time*
+decision, not a runtime one.
+:::
+
+## ION: the Multimedia Heap {.smaller}
+
+The engines (VPU, ISP, TPU) need big, physically-contiguous, DMA-able buffers.
+That is what **ION** is:
+
+- `cvitek,cvitek-ion` exposes a carveout heap to userspace.
+- Buffers are allocated once and **shared between engines** — no copies.
+- They are *carved out* of DRAM at boot, so Linux never sees them.
+
+::: {.fragment}
+> The engines don't allocate; they borrow. A camera frame goes
+> sensor → ISP → VPSS → encoder with **zero copies** — the same physical buffer,
+> handed along.
+:::
+
+::: {.notes}
+This is the "zero-copy pipeline" idea, and it is the reason ION exists. It also
+explains the image repo's `ION_SIZE` knob (and why `SECOND_CPU=arduino` sets it
+to 0).
+:::
+
+## Cache, One More Time {.smaller}
+
+Two things every driver must get right:
+
+| Question | Mechanism |
+|---|---|
+| Is this line in cache or in DRAM? | cache maintenance (`dma_sync_*`) |
+| Is this access even allowed? | MMU page tables + PMP/firewall |
+
+- The **big core** has an MMU; userspace sees virtual addresses.
+- The **little C906** is M-mode, physical, and **not coherent** (see `physical-memory.md`).
+- The **DMA engine** and the **engines** bypass the CPU cache entirely.
+
+::: {.fragment}
+> Three views of the same DRAM: virtual (Linux), physical (the little core),
+> and DMA (the engines). Keeping them straight is most of driver writing.
+:::
+
+::: {.notes}
+This is the synthesis of the memory part. Three agents, three address models,
+one array of DRAM. The coherency rules follow from who caches what.
+:::
+
+# Part V — The Engine Zoo (Quick)
+
+## Why Fixed-Function Engines? {.smaller}
+
+A general-purpose CPU can compute anything — expensively. An **engine** trades
+generality for efficiency:
+
+| | CPU | Engine |
+|---|---|---|
+| Flexibility | total | one job |
+| Energy per op | high | very low |
+| Area | shared | dedicated |
+| Parallelism | a few cores | thousands of MACs / pixels |
+
+::: {.fragment}
+This is **domain-specific architecture**: when one computation dominates the
+workload (a video codec, a convolution), build silicon that does *only* that.
+:::
+
+::: {.notes}
+Tie to the course's architecture thread: Amdahl, specialization, the end of
+easy general-purpose scaling. The engines are why a $5 SoC can encode 4K video.
+:::
+
+## The Zoo {.smaller}
+
+| Engine | Compatible (DT) | Does |
+|---|---|---|
+| **TPU** | `cvitek,tpu` | 0.5 TOPS INT8 inference — **lab later** |
+| **VPU** | `cvitek,asic-vcodec` | H.264/H.265 encode+decode |
+| **JPU** | `cvitek,asic-jpeg` | JPEG encode/decode |
+| **ISP / VI** | `cvitek,vi`, `cvitek,cif` | camera front end — **later deck** |
+| **VPSS** | `cvitek,vpss` | scale / crop / format |
+| **IVE** | `cvitek,ive` | image ops (OpenCV-ish) |
+| **DWA** | `cvitek,dwa` | dewarp (lens correction) |
+| **RGN** | `cvitek,rgn` | region / OSD overlay |
+
+::: {.notes}
+Do not go deep — this is the map. Each engine is a memory-mapped block with its
+own clock (`clk_isp_top_vip`, `clk_h264c`, …) and DMA feed.
+:::
+
+## Dataflow: Engines in a Chain {.smaller}
+
+The engines are not called one at a time — they are **chained**:
+
+```text
+ sensor ─► CSI/ISP ─► VPSS ─► [ TPU ] ─► VPU ─► display
+              │          │         │
+              └──────────┴─────────┴──► all sharing ION buffers, DMA-fed
+```
+
+- Each stage reads a buffer and writes a buffer — **no copies**.
+- DMA moves the data between stages and to/from DRAM.
+- The CPU only *configures* the chain and handles the "frame done" interrupts.
+
+::: {.fragment}
+> The CPU is the **conductor**, not the orchestra. This is what a modern SoC
+> looks like: a small control core and a lot of fixed-function dataflow.
+:::
+
+::: {.notes}
+This is the payoff slide for the whole deck: clocks feed the engines, power keeps
+them alive, DMA feeds them, and ION holds their buffers. Everything connects.
+:::
+
+## How You'd Drive One {.smaller}
+
+From Linux, engines are reached through the vendor's `osdrv` / `middleware`
+stack:
+
+- Kernel modules (`cvitek-osdrv-<board>`) expose `/dev/cvi-*` nodes.
+- Userland samples (`cvitek-middleware`) and the `tpusdk` / `onnxruntime` packages.
+- Or the **C906L** runs the whole pipeline as firmware — the `SECOND_CPU=camera`
+  personality (the ISP/VENC stack *is* the little core's other life).
+
+::: {.fragment}
+> One core, two lives: the C906L is either the vendor's camera/ISP engine
+> (`SECOND_CPU=camera`) or yours (`SECOND_CPU=arduino`) — never both.
+:::
+
+::: {.notes}
+The DT node `rtos_cmdqu` (`cvitek,rtos_cmdqu`) is the Linux side of that
+arrangement — the command queue to the C906L firmware.
+:::
+
+## Preview: The Two Labs {.smaller}
+
+**The TPU lab** — run a real model:
+
+- quantized INT8, 0.5 TOPS
+- from a captured frame to detections
+- measure CPU vs. NPU
+
+**The camera deck** — the ISP pipeline:
+
+- CSI → ISP → VPSS → encode
+- 3A (AE/AWB/AF), noise reduction, dewarp
+- the `SECOND_CPU=camera` firmware
+
+::: {.notes}
+Two forward references. Keep them to a slide each; the labs carry the depth.
+:::
+
+# Part VI — Synthesis & Lab
+
+## What We Actually Learned {.smaller}
+
+- **Clocks:** one 25 MHz crystal → 8 PLLs → a mux/divide tree → ~90 leaf clocks.
+  Every frequency is a *decision*; a block's clock is part of its interface.
+- **Power:** two domains, three reset levels, and an **always-on RTC island**
+  that is the root power controller. Mechanism is hardware; policy is software.
+- **The 8051:** the chip's *intended* power supervisor — and a case study in
+  "capability on the die ≠ capability you can use."
+- **DMA:** the CPU stops being in the loop; the price is coherency.
+- **Memory:** carveouts, ION, and three address models over one DRAM.
+- **Engines:** the CPU is the conductor, not the orchestra.
+
+::: {.notes}
+The unifying idea: a modern SoC is a *system* — clocked, powered, and fed — and
+the CPU is one participant. Read every box on the die through those four lenses.
+:::
+
+## Lab Ladder {.smaller}
+
+1. **Read the clock tree** — `cat /sys/kernel/debug/clk/clk_summary`; identify
+   CPU / DDR / TPU / SPI clocks and their parents.
+2. **Check a gate** — find a gated peripheral clock and explain why its registers
+   read 0.
+3. **Read the temperature** — `cat /sys/class/thermal/thermal_zone*/temp`.
+4. **DMA benchmark** — `/sys/class/dma` + `dmatest`, or write a descriptor by
+   hand via `/dev/mem` and watch `CHx_SSTAT`/`CHx_DSTAT`.
+5. *(optional)* **The 8051 mailbox hello** — load ≤8 KB SDCC firmware, exchange a
+   word over the RTC mailbox. *(Built, not fun.)*
+
+::: {.notes}
+Steps 1–3 are quick wins. Step 4 is the real lab. Step 5 is optional and mainly
+there to prove the fourth core exists.
+:::
+
+## Discussion Prompts {.smaller}
+
+- Why must you *park* a clock's consumers before retuning its PLL?
+- The RTC "requests" power transitions rather than commanding them — why the
+  request/enable split?
+- Interrupts are *worse* than polling for bulk copy. When is an interrupt the
+  right tool?
+- DMA bypasses the cache. Where does "the truth" live — and who keeps it honest?
+- The SG2000 has four CPUs; we use three. What does that say about the gap
+  between a datasheet and a board?
+
+::: {.notes}
+The last one is the 8051 discussion prompt, and the most transferable: vendor
+silicon is full of capabilities no one ever wires up.
+:::
+
+## Refs
+
+See [Reference Notes](refs.md) for the condensed version, and:
+
+- `boot-slides/` — privilege modes, memory map, SDHCI DMA.
+- `i2c-slides/` — the clock-gating surprise, in full.
+- `hints/physical-memory.md` — M-mode, physical access, coherency.
+- `hints/8051-mcu.md` — the fourth core, in detail.
+- SG2000 TRM ch. 7 (reset), ch. 8 (clock), ch. 11 (DMA), ch. 5–6 (power/RTC),
+  ch. 14 (8051).
+
+::: {.notes}
+Point at the TRM chapters by number so students can go deeper. The clock table
+(8.4) and the DMA register map (11.5) are the two most useful references.
+:::

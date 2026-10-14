@@ -14,6 +14,7 @@ website:
         menu:
           - hints/setup.md
           - hints/fishwaldo-arduino.md
+          - hints/8051-mcu.md
       - text: Boot Slides
         menu:
           - boot-slides/index.qmd
@@ -30,6 +31,10 @@ website:
         menu:
           - i2c-slides/index.qmd
           - i2c-slides/refs.md
+      - text: Beyond the CPU
+        menu:
+          - power-slides/index.qmd
+          - power-slides/refs.md
   search: true
 
 format:

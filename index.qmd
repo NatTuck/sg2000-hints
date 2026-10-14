@@ -18,6 +18,9 @@ CS 4250 — Computer Architecture.
   the Arduino core.
 - [How a GPIO pin is controlled: Linux, Arduino, `mmap`, and pure asm](hints/gpio-software.md) —
   one pin, four layers of abstraction, as a type-along lecture runbook.
+- [The 8051 "MCU"](hints/8051-mcu.md) —
+  the third core: what the always-on 8051 can do, why our images ship no
+  firmware for it, and what custom firmware would add.
 
 ## Boot Slides
 
@@ -42,3 +45,10 @@ CS 4250 — Computer Architecture.
 - [I²C: Two Wires, Many Chips](i2c-slides/index.qmd) —
   from a serial protocol to driving an SSD1306 OLED on the SG2000/Oz64.
 - [I²C — Reference Notes](i2c-slides/refs.md) — a condensed version.
+
+## Beyond the CPU
+
+- [Beyond the CPU: Clocks, Power, DMA, and the Engines](power-slides/index.qmd) —
+  the machine around the CPU: the clock tree, the always-on power island, the
+  DMA engine, carveouts/ION, and a quick tour of the accelerators.
+- [Beyond the CPU — Reference Notes](power-slides/refs.md) — a condensed version.
