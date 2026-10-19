@@ -402,11 +402,18 @@ row-major matrix has neither.
 
 ## Reference Patterns and the Working Set {.smaller}
 
-Plot address against time and real programs do not fill the space. They draw **bands
-and streaks** — code in tight low bands, the stack in a narrow band that drifts slowly,
-data in streaks along whatever array is being walked.
+Plot address against time and real programs do not fill the space. They draw
+**structured patterns**, and each one is a different kind of locality:
 
-![](figs/fig-access-pattern.svg){height=470px}
+- **code** (bottom) — ascending **ramps**: straight-line execution walking forward, then
+  a branch back to the top of the loop. Each ramp is spatial locality; the ramps
+  repeating at the *same addresses* is temporal locality.
+- **stack** (middle) — drifts slowly upward in small clusters: frames pushed on a call,
+  popped on return.
+- **data** (top) — a handful of **blobs** that move around: a few live structures, not
+  the whole array.
+
+![](figs/fig-access-pattern.svg){height=380px}
 
 ::: {.fragment}
 Pick a window **Δt** and count the distinct addresses touched. That set is the **working
@@ -419,6 +426,17 @@ set sees mostly hits.**
 ::: {.notes}
 MIT slide 18. The graph is the important artefact — address on the vertical axis, time
 on the horizontal, and the accesses forming clumps rather than a uniform fog.
+
+Walk the three motifs explicitly, because they are three *different* phenomena:
+
+- The code ramps are the best one. Execution walks forward through instructions (the
+  ramp), hits a branch, and jumps back (the drop). Then it runs the same ramp again, at
+  the same addresses. That single shape contains both halves of the locality principle.
+- The stack clusters are call/return: push frames on the way down, pop on the way up.
+  It drifts because the stack grows and shrinks around a moving base.
+- The data blobs are the point students miss: a program touching 512 MB of DRAM does not
+  touch it evenly. At any moment it is working on a few structures, and the blobs show
+  which.
 
 The saturation is the punchline. It says the working set is *bounded* even though the
 program runs for an unbounded time. That is why a 64 KB cache can serve a program that
