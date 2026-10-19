@@ -59,41 +59,68 @@ def ylab(x, y, s, size=13):
 def fig1():
     W, H = 1140, 520
     b = [txt(24, 34, "Memory reference patterns", 21, "start", DARK, bold=True)]
-    L, R, T, B = 116, 560, 66, 448
+    L, R, T, B = 120, 560, 66, 430
     def X(t): return L + t * (R - L)
     def Y(a): return B - a * (B - T)
-    b += [line(L, B, R, B, INK, 2), line(L, T, L, B, INK, 2),
-          txt(R, B + 30, "time →", 14, "end", GRAY, italic=True),
-          ylab(L - 70, (T + B) / 2, "address →")]
+    b += [line(L - 6, B, R, B, INK, 2), line(L, T - 6, L, B, INK, 2),
+          txt(L - 8, T - 16, "address", 14, "start", GRAY, italic=True),
+          txt(R, B + 30, "time →", 14, "end", GRAY, italic=True)]
+    b.append(rect(X(0.285), T, X(0.375) - X(0.285), B - T, "#e9edf2", "#9aa7b4", 1.2, op=0.9))
 
-    rng = np.random.default_rng(11)
-    cx = rng.uniform(0, 1, 520); cy = rng.normal(0.13, 0.022, 520)
-    sx = rng.uniform(0, 1, 380); sy = 0.42 + 0.07 * sx + rng.normal(0, 0.017, 380)
-    dx, dy = [], []
-    for k in range(9):
-        x0 = rng.uniform(0, 0.74); y0 = rng.uniform(0.58, 0.92)
-        ln = rng.integers(22, 58); slope = rng.uniform(0.0025, 0.0055)
-        for j in range(int(ln)):
-            dx.append(x0 + j * 0.0038); dy.append(y0 + j * slope + rng.normal(0, 0.0045))
-    for xx, yy, col in ((cx, cy, MID), (sx, sy, "#9ab7d6"), (dx, dy, "#6f93b8")):
-        for a, c in zip(xx, yy):
-            if 0 <= a <= 1 and 0 <= c <= 1:
-                b.append(circ(X(a), Y(c), 1.9, col, 0.58))
+    CODE, STACK, DATA = INK, "#7ea2c8", ACCENT
+    rng = np.random.default_rng(5)
 
-    xa, xb = 0.34, 0.52
-    b.append(rect(X(xa), T, X(xb) - X(xa), B - T, ACCENT, ACCENT, 1.6, dash="5,4", op=0.12))
-    b.append(line(X(xa), T, X(xa), B, ACCENT, 1.6, dash="5,4", op=0.9))
-    b.append(line(X(xb), T, X(xb), B, ACCENT, 1.6, dash="5,4", op=0.9))
-    b.append(txt((X(xa) + X(xb)) / 2, T + 20, "Δt", 15, "middle", ACCENT, bold=True, halo=True))
-    b.append(txt(X(xb) + 14, Y(0.31), "S = the distinct", 13, "start", ACCENT, bold=True, halo=True))
-    b.append(txt(X(xb) + 14, Y(0.27), "addresses touched", 13, "start", ACCENT, bold=True, halo=True))
-    b.append(txt(X(xb) + 14, Y(0.23), "inside the window", 13, "start", ACCENT, bold=True, halo=True))
+    # --- code: ascending ramps (straight-line execution) that loop back ---
+    for it in range(7):
+        t0 = 0.02 + it * 0.138
+        n = 11
+        for j in range(n):
+            t = t0 + j * 0.0095
+            a = 0.055 + j * 0.0098 + rng.normal(0, 0.0015)
+            if t <= 1 and 0 <= a <= 1:
+                b.append(circ(X(t), Y(a), 2.6, CODE, 0.85))
+        if it < 6:   # the branch back
+            b.append(line(X(t0 + (n - 1) * 0.0095), Y(0.055 + (n - 1) * 0.0098),
+                          X(t0 + 0.138), Y(0.055), CODE, 1.0, dash="3,4", op=0.45))
 
-    b.append(txt(L - 12, Y(0.13) + 4, "code", 13, "end", GRAY, italic=True))
-    b.append(txt(L - 12, Y(0.46) + 4, "stack", 13, "end", GRAY, italic=True))
-    b.append(txt(L - 12, Y(0.80) + 4, "data", 13, "end", GRAY, italic=True))
+    # --- stack: slow drift with small call/return clusters ---
+    for i in range(90):
+        t = 0.015 + i * 0.0110
+        a = 0.395 + 0.075 * t + rng.normal(0, 0.004)
+        b.append(circ(X(t), Y(a), 2.5, STACK, 0.85))
+        if rng.random() < 0.16:          # a call: a couple of frames pushed
+            for k in range(1, 3):
+                b.append(circ(X(t + 0.002 * k), Y(a + 0.010 * k), 2.5, STACK, 0.85))
 
-    L2, R2, T2, B2 = 700, 1100, 66, 448
+    # --- data: small blobs of a few addresses, wandering ---
+    a0 = 0.78
+    for k in range(11):
+        t0 = 0.035 + k * 0.086
+        a0 = float(np.clip(a0 + rng.normal(0, 0.055), 0.60, 0.92))
+        rows, cols = 3, 3
+        for i in range(rows):
+            for j in range(cols):
+                if rng.random() < 0.22: continue
+                b.append(circ(X(t0 + j * 0.0055), Y(a0 + i * 0.0115), 2.6, DATA, 0.85))
+
+    # --- the window bracket (the shading itself is drawn behind the dots) ---
+    xa, xb = 0.285, 0.375
+    b.append(line(X(xa), B + 8, X(xb), B + 8, GRAY, 1.6))
+    b.append(line(X(xa), B + 4, X(xa), B + 12, GRAY, 1.6))
+    b.append(line(X(xb), B + 4, X(xb), B + 12, GRAY, 1.6))
+    b.append(txt((X(xa) + X(xb)) / 2, B + 30, "Δt", 15, "middle", DARK, bold=True))
+
+    b.append(txt(X(0.40), Y(0.30), "S = the set of locations", 13.5, "start", DARK, bold=True, halo=True))
+    b.append(txt(X(0.40), Y(0.265), "accessed during Δt", 13.5, "start", DARK, bold=True, halo=True))
+
+    b.append(txt(L - 14, Y(0.11) + 4, "code", 14, "end", CODE, italic=True))
+    b.append(txt(L - 14, Y(0.46) + 4, "stack", 14, "end", STACK, italic=True))
+    b.append(txt(L - 14, Y(0.80) + 4, "data", 14, "end", DATA, italic=True))
+    b.append(txt(L - 14, Y(0.11) + 22, "sequential,", 10.5, "end", GRAY, italic=True))
+    b.append(txt(L - 14, Y(0.11) + 34, "then loops back", 10.5, "end", GRAY, italic=True))
+
+    # ---- right panel: |S| vs delta-t ----
+    L2, R2, T2, B2 = 700, 1100, 66, 430
     def X2(t): return L2 + t * (R2 - L2)
     ymax = 260.0
     def Y2(v): return B2 - (v / ymax) * (B2 - T2)
@@ -106,6 +133,7 @@ def fig1():
     pts = [f"{X2(t):.1f},{Y2(220 * (1 - math.exp(-t / 0.30))):.1f}"
            for t in np.linspace(0.001, 1, 200)]
     b.append(path("M" + " L".join(pts), "none", INK, 3))
+    b.append(line(L2, Y2(220), R2 - 4, Y2(220), INK, 1.2, dash="3,4", op=0.5))
     for kb, lab, col in ((32, "L1 I  32 KB", MID), (64, "L1 D  64 KB", "#4a7fb0"),
                          (128, "L2  128 KB  (A53 only)", ACCENT)):
         b.append(line(L2, Y2(kb), R2 - 4, Y2(kb), col, 1.6, dash="6,4"))
