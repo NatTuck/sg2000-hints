@@ -88,11 +88,11 @@ alongside:
 
 | | Capacity | Latency | Cost per bit | On our board |
 |---|---|---|---|---|
-| **Registers** | 1000s of bits | 20 ps | $$$$ | 31 × 64 b + PC |
-| **SRAM** | 10 KB – 10 MB | 1–10 ns | ~$$$ | 96 KB of L1 |
-| **DRAM** | ~10 GB | 80 ns | ~$ | 512 MB DDR3 |
-| **Flash** | ~100 GB | 100 µs | ~¢ | 16–64 GB NAND |
-| **Disk** | ~1 TB | 10 ms | ~¢ | eMMC, up to 2 TB |
+| **Registers** | 1000s of bits | 20 ps | \$\$\$\$ | 31 × 64 b + PC |
+| **SRAM** | 10 KB – 10 MB | 1–10 ns | \$\$\$ | 96 KB of L1 |
+| **DRAM** | ~10 GB | 80 ns | \$ | 512 MB DDR3 |
+| **Flash** | ~100 GB | 100 µs | ¢ | 16–64 GB NAND |
+| **Disk** | ~1 TB | 10 ms | ¢ | eMMC, up to 2 TB |
 
 ::: {.fragment}
 Read the table down the columns: every step down is roughly **10× more capacity for
