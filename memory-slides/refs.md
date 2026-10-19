@@ -252,6 +252,9 @@ Set by DRAM burst granularity and the spatial locality of real code, not by the 
 **Belady's anomaly**: FIFO with 4 frames can fault *more* than with 3 (9 → 10 faults on
 `1 2 3 4 1 2 5 1 2 3 4 5`). LRU cannot do this.
 
+**None of our cores implements true LRU**: C906 = FIFO, A53 = pseudo-random, x86 =
+approximation. LRU is the reference, not the implementation.
+
 ::: {.notes}
 Our C906 uses FIFO on both caches, so it gives up the inclusion guarantee.
 :::
@@ -281,19 +284,22 @@ mode.
 
 | | **C906 @ 1 GHz** | **C906 @ 700 MHz** | **A53 @ 1 GHz** | **Ryzen 7 9850X3D** |
 |---|---|---|---|---|
-| L1 I | 32 KB, 2-way | 16 KB, 2-way | 32 KB, n/d | 32 KB, 8-way |
-| L1 D | 64 KB, 4-way | 16 KB, 4-way | 32 KB, n/d | 48 KB, 12-way |
-| L2 | — | — | 128 KB | 1 MB, 16-way |
+| L1 I | 32 KB, 2-way | 16 KB, 2-way | 32 KB, 2-way | 32 KB, 8-way |
+| L1 D | 64 KB, 4-way | 16 KB, 4-way | 32 KB, 4-way | 48 KB, 12-way |
+| L2 | — | — | 128 KB, 16-way | 1 MB, 16-way |
 | L3 | — | — | — | 96 MB |
 | Line | 64 B | 64 B | 64 B | 64 B |
-| Replacement | FIFO | FIFO | n/d | n/d |
+| Replacement | FIFO | FIFO | pseudo-random | n/d |
 | Prefetch | both | both | n/d | yes |
 
 Associativity **2 → 4 → 8 → 12**. L3 **none → none → none → 96 MB**.
 
 ::: {.notes}
-`n/d` = not documented in our sources (A53 associativity, both replacement policies);
-`—` = level does not exist. Kept distinct on purpose.
+`n/d` = not documented in our sources (x86 replacement policy); `—` = level does not
+exist. Kept distinct on purpose.
+
+**C906 and A53 have identical L1 geometry:** 2-way instruction, 4-way data, 64-byte
+lines. The C906 has the larger D-cache (64 KB vs 32 KB); the A53 has the L2.
 :::
 
 ## C906 L1 I-Cache — §7.1 {.smaller}
@@ -407,6 +413,7 @@ claim the manual makes. Flagged as open rather than smoothed over.
 | Caches disabled at reset | **quoted** | C906 manual §7.3 |
 | Core configurations (32/64 KB etc.) | **quoted** | SG2000 / SG2002 TRM |
 | A53 L2 = 128 KB | **quoted** | SG2002 TRM §3.1 |
+| A53 associativity (2/4-way), pseudo-random | **quoted** | Arm Cortex-A53 TRM (DDI 0500) |
 | Zen 5 caches, 96 MB L3 | **quoted** | AMD / Zen 5 microarchitecture tables |
 | Set/index/tag counts | **derived** | `sets = size ÷ (ways × line)` |
 | 3.73 GB/s, 17 cycles/line | **derived** | 1866 Mbps × 16 bit |
@@ -427,6 +434,8 @@ where errors live.
   the AMAT framing.
 - **Hennessy & Patterson**, *Computer Architecture* — associativity tradeoffs
   (Fig. 5.9), replacement policies.
+- **Arm Cortex-A53 TRM** (DDI 0500) — L1 geometry and replacement policy. Note the
+  document is now behind an Arm login.
 - **AMD Zen 5** microarchitecture tables; Ryzen 7 9850X3D product page (8 cores,
   96 MB L3, launched 29 Jan 2026).
 

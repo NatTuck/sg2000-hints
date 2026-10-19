@@ -1,6 +1,6 @@
 ---
 title: "Caches and the Memory Hierarchy"
-subtitle: "The stock story, and four cores that disagree about it"
+subtitle: "The stock story, and what four real cores did with it"
 author: "CS 4250 — Computer Architecture"
 date: today
 format:
@@ -953,7 +953,7 @@ Our four cores, all on the same curve:
 |---|---|---|
 | C906 @ 700 MHz | 16 KB, **2-way** | 16 KB, **4-way** |
 | C906 @ 1 GHz | 32 KB, **2-way** | 64 KB, **4-way** |
-| Cortex-A53 | 32 KB, n/d | 32 KB, n/d |
+| Cortex-A53 | 32 KB, **2-way** | 32 KB, **4-way** |
 | Ryzen 7 9850X3D | 32 KB, **8-way** | 48 KB, **12-way** |
 
 ::: {.fragment}
@@ -969,10 +969,9 @@ The Zen 5 detail is a lovely confirmation: AMD did not go to 12 ways for fun, th
 because they wanted 48 KB and 8-way would have made the conflict rate worse. That is
 exactly the reasoning the lecture just taught, in a product launched in 2026.
 
-Note the A53 row has no associativity — the SG2002 TRM documents only sizes. Flag it
-as a gap rather than filling it in from memory. That is deliberate: a blank cell is a
-fact about our sources, and a plausible-looking guess is a lie the students cannot
-detect.
+The A53 row is the interesting one: **2-way instruction, 4-way data — identical to the
+C906.** Two vendors, two ISAs, one die, the same asymmetry. The next slide argues about
+why.
 :::
 
 ## Replacement Policy {.smaller}
@@ -989,6 +988,10 @@ Only matters when ways > 1 — you must choose a victim.
 ::: {.fragment}
 Belady's MIN is still useful: it is the **lower bound** you measure other policies
 against.
+
+And **no core on our board implements true LRU** — the C906 uses FIFO, the A53 uses
+pseudo-random, x86 uses an approximation. The textbook policy is the reference, not the
+implementation.
 :::
 
 ::: {.notes}
@@ -1000,7 +1003,9 @@ bits; FIFO needs 2. That is the cost side. Real hardware mostly uses pseudo-LRU
 approximations because true LRU's bookkeeping is on the critical path.
 
 Foreshadow: our C906 uses FIFO on *both* caches, and that has a consequence we will
-look at in Part V.
+look at in Part V. The A53 next to it uses pseudo-random, which has no recency
+information at all but also no adversarial pattern. Neither is LRU — that is a
+textbook idealisation, not something you can buy.
 :::
 
 ## Why FIFO Is Different {.smaller}
@@ -1103,19 +1108,20 @@ Everything so far was the model. Here is what four real cores did with it.
 
 | | **C906 @ 1 GHz** | **C906 @ 700 MHz** | **Cortex-A53** | **Ryzen 7 9850X3D** |
 |---|---|---|---|---|
-| **L1 I** | 32 KB, 2-way | 16 KB, 2-way | 32 KB, n/d | 32 KB, 8-way |
-| **L1 D** | 64 KB, 4-way | 16 KB, 4-way | 32 KB, n/d | 48 KB, 12-way |
-| **L2** | — | — | **128 KB** | 1 MB, 16-way |
+| **L1 I** | 32 KB, 2-way | 16 KB, 2-way | 32 KB, 2-way | 32 KB, 8-way |
+| **L1 D** | 64 KB, 4-way | 16 KB, 4-way | 32 KB, 4-way | 48 KB, 12-way |
+| **L2** | — | — | **128 KB**, 16-way | 1 MB, 16-way |
 | **L3** | — | — | — | **96 MB** |
 | **Line** | 64 B | 64 B | 64 B | 64 B |
-| **Replacement** | FIFO | FIFO | n/d | n/d |
+| **Replacement** | FIFO | FIFO | **pseudo-random** | n/d |
 | **Prefetch** | yes, both | yes, both | n/d | yes |
 
 ::: {.fragment}
 Associativity runs **2 → 4 → 8 → 12**. L3 runs **none → none → none → 96 MB**.
 
-And the line size is **64 bytes on all four**. That is the one column where the entire
-industry agrees.
+But look at the first two columns of associativity: **the C906 and the A53 are
+identical** — 2-way instruction, 4-way data. And the line size is **64 bytes on all
+four**. Two of those columns are industry consensus.
 :::
 
 ::: {.notes}
@@ -1126,10 +1132,13 @@ The 64-byte line across all four is the strongest evidence for the block-size sl
 is set by DRAM burst granularity and by the spatial locality of real code, and it has
 been stable for two decades.
 
-Three honesty notes. `n/d` means **not documented in the sources we had** — the SG2002
-TRM gives the A53's sizes but not its associativity, and neither ARM's nor AMD's
-replacement policy is documented in a form we could cite. A dash (`—`) means the level
-does not exist. Keep those two symbols distinct; conflating them is how spec tables lie.
+Two honesty notes. `n/d` means **not documented in the sources we had** — AMD's
+replacement policy is not published in a citable form. A dash (`—`) means the level does
+not exist. Keep those two symbols distinct; conflating them is how spec tables lie.
+
+The A53 row comes from Arm's Cortex-A53 TRM. Note that its L1 geometry matches the
+C906's exactly: 2-way instruction, 4-way data. That is the finding this slide was
+missing — see "Two Vendors, One Answer".
 :::
 
 ## Two C906s, Not One {.smaller}
@@ -1239,43 +1248,52 @@ fails if the D-cache is disabled. That is a lovely example of an unrelated featu
 (atomic operations) silently depending on a cache being switched on.
 :::
 
-## The Same Vendor Disagreed With Itself {.smaller}
+## Two Vendors, One Answer {.smaller}
 
-Same die. Same vendor. Same 64-byte line. Same FIFO policy.
+The C906 splits its Harvard cache: **I-cache 2-way, D-cache 4-way**.
 
-**I-cache: 2-way. D-cache: 4-way.**
+The Cortex-A53 — different vendor, different ISA, same die — splits it **exactly the
+same way**:
 
-The manual does not say why. Two hypotheses worth arguing about:
+| | L1 I | L1 D |
+|---|---|---|
+| C906 @ 1 GHz | 32 KB, **2-way** | 64 KB, **4-way** |
+| Cortex-A53 | 32 KB, **2-way** | 32 KB, **4-way** |
+
+Neither manual explains the choice. But two independent design teams landing on 2/4 is
+not a coincidence — it is a **consensus**, and consensus usually has a reason.
+
+::: {.fragment}
+Two hypotheses, and they are not mutually exclusive:
 
 - The I-cache sits on the **fetch critical path** — every comparator added there delays
   every instruction fetch, so it is kept minimal.
-- Instruction streams have **regular, sequential** access patterns with few conflicts,
-  so the second pair of ways buys less than it costs.
-
-::: {.fragment}
-Which is it? Or is it neither? This is a design tradeoff you can now *argue about*,
-which is the difference between knowing the vocabulary and knowing the subject.
+- Instruction streams are **regular and sequential** with few conflicts, so the extra
+  ways buy less on the I side than on the D side.
 :::
 
 ::: {.notes}
-Deliberately present this as an open question rather than asserting a reason — the
-manual genuinely does not explain it, and inventing a rationale would be teaching them
-to make things up.
+This is the intellectual centre of Part V, and it got stronger once we filled in the
+A53. It is no longer "one vendor was inconsistent" — it is two vendors, two ISAs, one
+die, arriving at the same asymmetry independently.
 
-Let them argue. Both hypotheses are plausible and they are not mutually exclusive. The
-stronger version of the second: an I-cache miss costs a full fetch stall, so hit time
-dominates, so you minimise comparators.
+That turns a curiosity into evidence. If one team chose 2/4 you could dismiss it as
+habit; when two do, the asymmetry is probably real engineering.
 
-This slide is the intellectual centre of Part V: the same engineers, given the same
-toolkit, made different choices for the two halves of a Harvard cache.
+Do not give them an answer, because we do not have one — neither manual states a
+rationale, and inventing one would teach them to make things up.
+
+A good prompt if the room is quiet: what would you expect on a core with a trace cache
+or a very wide fetch? (The I-side gets *more* pressure, so the asymmetry should grow.)
 :::
 
 ## The A53 Has an L2. We Don't. {.smaller}
 
 | | C906 @ 1 GHz | Cortex-A53 @ 1 GHz |
 |---|---|---|
-| L1 I / D | 32 KB / 64 KB | 32 KB / 32 KB |
-| L2 | **none** | **128 KB** |
+| L1 I | 32 KB, 2-way | 32 KB, 2-way |
+| L1 D | 64 KB, 4-way | 32 KB, 4-way |
+| L2 | **none** | **128 KB**, 16-way |
 | On an L1 miss | straight to DDR3 | L2 first |
 
 Back to the AMAT composition, same 0.95 L1 hit ratio:
@@ -1286,14 +1304,17 @@ Back to the AMAT composition, same 0.95 L1 hit ratio:
 | A53: `2 + 0.05 × (10 + 0.20 × 80)` | **3.3 cycles** |
 
 ::: {.fragment}
-The C906 has **twice the L1 D-cache** and still loses, because there is nothing behind
-it to absorb a miss.
+Identical associativity. Identical line size. The C906 even has **twice the L1
+D-cache** — and it still loses, because there is nothing behind it to absorb a miss.
 :::
 
 ::: {.notes}
 This is the single most practically useful comparison in the deck, and it is not the one
-students expect. The C906 has *more* L1 data cache than the A53 and is still the slower
-core for memory-bound work.
+students expect. The two cores have the *same* associativity and the *same* line size,
+and the C906 has more L1 data cache — and it is still the slower core for memory-bound
+work. The only variable left is the L2.
+
+That is what makes it a clean experiment rather than a pile of differences.
 
 The lesson: L1 capacity and L2 presence are not interchangeable, and the second level is
 worth more than extra first-level ways or kilobytes, because it attacks the *penalty*
@@ -1462,8 +1483,8 @@ line, and say something intelligent about it.
 
 ## Discussion Prompts {.smaller}
 
-- The C906 I-cache is 2-way and its D-cache is 4-way. **Argue for or against** keeping
-  them symmetric.
+- Both the C906 and the A53 are 2-way on instructions and 4-way on data. **Argue for or
+  against** keeping the two sides symmetric — and say what evidence would settle it.
 - The A53 has 32 KB + 32 KB + 128 KB; the C906 has 32 KB + 64 KB and no L2. **Which
   would you rather compile for**, and does the answer depend on the program?
 - Adaptive write-allocate turns itself off under streaming stores. **What could go
