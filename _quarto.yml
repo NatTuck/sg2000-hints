@@ -32,6 +32,10 @@ website:
         menu:
           - i2c-slides/index.qmd
           - i2c-slides/refs.md
+      - text: Memory Hierarchy
+        menu:
+          - memory-slides/index.qmd
+          - memory-slides/refs.md
       - text: Beyond the CPU
         menu:
           - power-slides/index.qmd

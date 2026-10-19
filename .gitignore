@@ -15,5 +15,6 @@ hints/work/build*/
 /_site/
 **/*_files/
 boot-slides/*.html
+memory-slides/*.html
 
 **/*.quarto_ipynb

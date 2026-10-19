@@ -1,0 +1,44 @@
+/*-- scss:defaults --*/
+
+$presentation-heading-color: #1a4f8b;
+$presentation-heading-font-weight: 600;
+$link-color: #1a4f8b;
+$code-block-font-size: 0.78em;
+
+/*-- scss:rules --*/
+
+.reveal h1,
+.reveal h2 {
+  text-transform: none;
+}
+
+.reveal .slide-number {
+  color: #1a4f8b;
+}
+
+.reveal table {
+  font-size: 0.80em;
+}
+
+/* Wide comparison tables stay legible and on one line */
+.reveal .tbl-tight table {
+  table-layout: fixed;
+  width: 100%;
+  font-size: 0.72em;
+}
+
+.reveal .footer {
+  font-size: 0.5em;
+  color: #666;
+}
+
+.reveal blockquote {
+  border-left: 4px solid #1a4f8b;
+  padding-left: 1em;
+  font-style: italic;
+}
+
+.reveal code {
+  /* keep register names and API names legible */
+  white-space: nowrap;
+}

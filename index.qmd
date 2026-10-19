@@ -52,3 +52,10 @@ CS 4250 — Computer Architecture.
   the machine around the CPU: the clock tree, the always-on power island, the
   DMA engine, carveouts/ION, and a quick tour of the accelerators.
 - [Beyond the CPU — Reference Notes](power-slides/refs.md) — a condensed version.
+
+## Memory Hierarchy
+
+- [Caches and the Memory Hierarchy](memory-slides/index.qmd) —
+  the stock cache story from transistors to associativity, then four real cores
+  compared: both C906s, the Cortex-A53, and a Ryzen 7 9850X3D.
+- [Caches and the Memory Hierarchy — Reference Notes](memory-slides/refs.md) — a condensed version.
