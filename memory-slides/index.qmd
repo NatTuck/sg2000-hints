@@ -191,16 +191,7 @@ That loop has **two stable states**, and those two states are a bit.
 
 Two more transistors connect the loop to a pair of **bitlines**, gated by a **wordline**:
 
-```text
-        wordline
-           |
-   BL ──[access]──+---------+──[access]── BL̄
-                  |         |
-                [inv]     [inv]
-                  |         |
-                  +---------+
-                (cross-coupled: bistable)
-```
+![](figs/fig-sram-cell.svg){height=465px}
 
 ::: {.fragment}
 Six transistors, and the bit is held by feedback — no refresh, no capacitor, and
@@ -411,18 +402,15 @@ row-major matrix has neither.
 
 ## Reference Patterns and the Working Set {.smaller}
 
-Plot address against time and real programs do not fill the space — they draw
-**bands and streaks**.
+Plot address against time and real programs do not fill the space. They draw **bands
+and streaks** — code in tight low bands, the stack in a narrow band that drifts slowly,
+data in streaks along whatever array is being walked.
 
-- Code: a few tight bands (the hot loops)
-- Stack: a narrow band that moves slowly
-- Data: streaks along the array being walked
-
-Now pick a time window **Δt** and ask: how many *distinct* addresses were touched? Call
-that set **S**, the **working set**.
+![](figs/fig-access-pattern.svg){height=470px}
 
 ::: {.fragment}
-|S| grows as Δt grows, then **saturates** at the program's true footprint.
+Pick a window **Δt** and count the distinct addresses touched. That set is the **working
+set** |S|. It grows with Δt, then **saturates** at the program's real footprint.
 
 That saturation is the whole opportunity: **a cache bigger than the saturated working
 set sees mostly hits.**
@@ -443,19 +431,12 @@ help. That is exactly why the engines use DMA and carveouts instead (see the pow
 
 ## Everything Is a Cache for Something Else {.smaller}
 
-| Level | Size (ours) | Latency | Managed by |
-|---|---|---|---|
-| Registers | 1 KB | 0 cycles | **compiler** |
-| L1 I / D | 32 KB / 64 KB | 1–4 cycles | hardware |
-| L2 | 128 KB *(A53 only)* | ~10 cycles | hardware |
-| L3 | **none** | — | — |
-| Main memory | 512 MB DDR3 | 60–100 cycles | OS + hardware |
-| Flash (NAND / eMMC) | 16 GB – 2 TB | 50–100 µs | OS |
-| Network / cloud | ∞ | ms–s | distributed system |
+![](figs/fig-hierarchy.svg){height=470px}
 
 ::: {.fragment}
-Each level is a cache for the level below it. The register file is a cache for the L1;
-the L1 is a cache for DRAM; DRAM is a cache for flash.
+Each level is a cache for the level below it — and each has a different **owner**: the
+compiler allocates registers, hardware manages the caches, the OS runs the flash page
+cache. Same problem, three different owners.
 :::
 
 ::: {.notes}
@@ -789,13 +770,11 @@ The three costs in the fragment are the setup for the next slide's U-curve.
 
 ## Block Size Tradeoffs {.smaller}
 
-AMAT as a function of block size is **U-shaped**, because two effects fight:
+AMAT is **U-shaped** in block size, because two effects fight: bigger blocks cut the
+miss rate (more spatial reuse per fetch) but raise the miss penalty (a longer fill
+before you can use any of it).
 
-| Block size | Miss rate | Miss penalty | AMAT |
-|---|---|---|---|
-| too small | high — no spatial reuse | small | **worse** |
-| **~64 B** | minimum | moderate | **best** |
-| too large | low | **large** — long fill, few blocks | **worse** |
+![](figs/fig-block-size.svg){height=455px}
 
 ::: {.fragment}
 MIT's deck puts the optimum at about **64 bytes** (slide 28). Our C906's line size is
@@ -913,17 +892,7 @@ way stop memorising three separate structures.
 
 ## N-Way Structure {.smaller}
 
-```text
-address ──► [index] ──► select set (row)
-                            │
-              ┌─────────────┼─────────────┐
-              ▼             ▼             ▼
-          [tag 0 ==]    [tag 1 ==]    [tag 2 ==]     ← N comparators, in parallel
-              │             │             │
-              └──── OR ─────┴──── OR ─────┘──► HIT
-                            │
-                       [N:1 mux] ──► data to CPU
-```
+![](figs/fig-nway.svg){height=455px}
 
 ::: {.fragment}
 Cost: **N comparators and an N:1 mux on the critical path**. Hit time grows with N.
@@ -947,18 +916,12 @@ AMAT versus associativity is also **U-shaped**: conflict misses fall, hit time r
 
 > "Little additional benefit beyond **4 to 8 ways**." — H&P, cited on MIT slide 34
 
-Our four cores, all on the same curve:
-
-| Core | L1 I | L1 D |
-|---|---|---|
-| C906 @ 700 MHz | 16 KB, **2-way** | 16 KB, **4-way** |
-| C906 @ 1 GHz | 32 KB, **2-way** | 64 KB, **4-way** |
-| Cortex-A53 | 32 KB, **2-way** | 32 KB, **4-way** |
-| Ryzen 7 9850X3D | 32 KB, **8-way** | 48 KB, **12-way** |
+![](figs/fig-associativity.svg){height=465px}
 
 ::: {.fragment}
-Zen 5 raised its L1 D-cache from 8-way to **12-way** specifically *to accommodate* the
-larger 48 KB size. That is the tradeoff curve, visible in a shipping product.
+All four of our cores sit on that curve. Zen 5 raised its L1 D-cache from 8-way to
+**12-way** specifically *to accommodate* the larger 48 KB size — the tradeoff, visible
+in a shipping product.
 :::
 
 ::: {.notes}
