@@ -1,0 +1,64 @@
+---
+title: "Pipelining: Five Stages, Three Strategies"
+subtitle: "The stock story, and what our silicon does about hazards"
+author: "CS 4250 — Computer Architecture"
+date: today
+format:
+  revealjs:
+    theme: [default, custom.scss]
+    slide-number: true
+    incremental: false
+    controls: true
+    progress: true
+    hash: true
+    center: false
+    code-line-numbers: true
+    chalkboard: true
+    footer: "CS 4250 · Pipelining — SG2000"
+    preview-links: auto
+    fig-align: center
+    width: 1280
+    height: 800
+    margin: 0.08
+---
+
+## Roadmap {.smaller}
+
+Six parts, after a framing slide. Parts I–IV are the standard story — the one in
+any textbook. Parts V–VI are about the cores on the desk in front of you.
+
+**The stock story**
+
+1. **The five-stage machine** — cut the single-cycle critical path into five, and
+   put a register between each pair
+2. **Data hazards** — the register file hands back a stale value; stall, bypass, or
+   speculate
+3. **Control hazards** — NextPC is not known until the register file answers
+4. **Exceptions and interrupts** — implicit branches, and how to flush cleanly
+
+**Our silicon**
+
+5. **The C906 pipeline** — 5-stage, single-issue, in-order: which of these
+   mechanisms are actually in the core, and what they cost
+6. **Synthesis** — CPI accounting, and quoted versus derived
+
+::: {.notes}
+Frame the deck the same way as the cache deck: two halves, and the second half is
+why the first half is worth learning. Parts I–IV are examinable. Part V is what
+makes it stick, because it is about the chip in their hand.
+
+The single sentence to land before we start: a pipeline does not make instructions
+faster, it makes *the machine* faster by doing five different instructions at once.
+Every hazard in Parts II–IV is a consequence of that one decision, and every
+mechanism is a way of paying for it.
+
+Say up front that the reference lecture for this material is MIT 6.004's
+*Pipelining the Beta*, and that our Beta is the same Beta they built in 6.004 —
+five stages, one memory port, one register file. The diagrams in Parts I–IV are
+ours, redrawn; the sequence of ideas is theirs.
+
+Do not let the deck become a tour of someone else's slides. Every mechanism gets
+taught from scratch, then immediately grounded in our hardware. Where the hardware
+does something the textbook does not, that is the interesting slide, not an
+embarrassment.
+:::

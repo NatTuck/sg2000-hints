@@ -59,3 +59,9 @@ CS 4250 — Computer Architecture.
   the stock cache story from transistors to associativity, then four real cores
   compared: both C906s, the Cortex-A53, and a Ryzen 7 9850X3D.
 - [Caches and the Memory Hierarchy — Reference Notes](memory-slides/refs.md) — a condensed version.
+
+## Pipelining
+
+- [Pipelining: One Instruction Per Clock](pipelining-slides/index.qmd) —
+  the five-stage Beta, the three strategies for data and control hazards, and
+  what the C906's in-order pipeline actually implements.

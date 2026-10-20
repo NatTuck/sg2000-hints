@@ -40,6 +40,9 @@ website:
         menu:
           - power-slides/index.qmd
           - power-slides/refs.md
+      - text: Pipelining
+        menu:
+          - pipelining-slides/index.qmd
   search: true
 
 format:
