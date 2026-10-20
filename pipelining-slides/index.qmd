@@ -437,3 +437,308 @@ Last framing for the part: every slide from here is one of these three, priced.
 Stall buys correctness with CPI, bypass buys it with silicon, speculation buys it
 with a gamble. There is no fourth option.
 :::
+
+## Stall {.smaller}
+
+<table class="pipe-tbl">
+<thead>
+<tr><th></th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th>12</th></tr>
+</thead>
+<tbody>
+<tr><td>IF</td><td class="c1">ld x5</td><td class="c2">add x6</td><td class="c3">sub x7</td><td class="c4">and x8</td><td class="c4">and x8</td><td class="c4">and x8</td><td class="c5">or x9</td><td class="c6">xor x19</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>ID</td><td></td><td class="c1">ld x5</td><td class="c2">add x6</td><td class="c3 frozen">sub x7</td><td class="c3 frozen">sub x7</td><td class="c3 frozen">sub x7</td><td class="c4">and x8</td><td class="c5">or x9</td><td class="c6">xor x19</td><td></td><td></td><td></td></tr>
+<tr><td>EX</td><td></td><td></td><td class="c1">ld x5</td><td class="c2">add x6</td><td class="nop">NOP</td><td class="nop">NOP</td><td class="c3">sub x7</td><td class="c4">and x8</td><td class="c5">or x9</td><td class="c6">xor x19</td><td></td><td></td></tr>
+<tr><td>MEM</td><td></td><td></td><td></td><td class="c1">ld x5</td><td class="c2">add x6</td><td class="nop">NOP</td><td class="nop">NOP</td><td class="c3">sub x7</td><td class="c4">and x8</td><td class="c5">or x9</td><td class="c6">xor x19</td><td></td></tr>
+<tr><td>WB</td><td></td><td></td><td></td><td></td><td class="c1">ld x5</td><td class="c2">add x6</td><td class="nop">NOP</td><td class="nop">NOP</td><td class="c3">sub x7</td><td class="c4">and x8</td><td class="c5">or x9</td><td class="c6">xor x19</td></tr>
+</tbody>
+</table>
+
+`sub`'s ID stage is frozen for two cycles, and a NOP is injected into EX each time.
+The bubbles then travel down the machine on their own.
+
+::: {.fragment}
+Six instructions now take **12 cycles instead of 10** — CPI 2.0 instead of 1.67.
+:::
+
+::: {.notes}
+The fix that always works: do not let the instruction advance. `sub` stays in ID
+until the value it needs is in the register file, and the rest of the machine keeps
+running — what travels down instead of an instruction is a bubble.
+
+Read the table with them, left to right, in the ID row: `sub` sits there in cycles
+4, 5 and 6 (the dashed cells), which is two stalls. In cycles 5 and 6 there is a
+NOP in EX, and those NOPs then move down the table on their own — by cycle 7 they
+are in MEM, and by cycle 8 in WB. That is what a bubble is: an empty slot, not an
+instruction that does nothing.
+
+The cost is on the slide: ten cycles become twelve. Nothing is wrong, everything is
+slower. This is the first time in the deck that CPI is not 1, and it is worth
+saying plainly that the machine has not become incorrect — it has become slower,
+which is a different kind of bad.
+
+Two details that matter later:
+
+- The stall is *not* one cycle. `sub` reads in ID; the value arrives at the end of
+  cycle 6; a read in cycle 6 sees it only because the register file writes early in
+  the cycle and reads late. That assumption is the next slide's business.
+- A frozen ID holds the *same instruction*, and the PC is frozen too, so IF keeps
+  fetching the same address. Nothing is lost; nothing is duplicated.
+
+Ask them what the CPI of this program would be if `sub` were three instructions
+later instead of one. (Answer: no stall at all, which is the compiler's opening in
+a few slides.)
+:::
+
+## The Stall Logic {.smaller}
+
+The hardware has to *detect* the hazard before it can repair it.
+
+| Compare | With | Why |
+|---|---|---|
+| `rs1`, `rs2` of the instruction in **ID** | `rd` of the instruction in **EX** | its result is one stage away |
+| | `rd` of the instruction in **MEM** | its result is two stages away |
+| | ~~`rd` of the instruction in **WB**~~ | safe: the write happens *before* the read in that cycle |
+
+If any comparison matches, and the destination is not `x0`, assert **STALL**.
+
+| STALL = 1 | Effect |
+|---|---|
+| freeze PC | do not fetch |
+| freeze IF/ID | keep the stalled instruction in ID |
+| clear the control bits into ID/EX | inject a NOP into EX |
+
+::: {.notes}
+This is the only slide in the deck that shows hazard *detection* rather than hazard
+*repair*, and the comparator bank reappears in Part III for control hazards, so it
+is worth drawing carefully.
+
+The comparisons are register numbers, not values: compare `rs1` and `rs2` in ID
+against `rd` in EX and MEM. Two exclusions matter.
+
+`x0` is excluded, because `x0` is not a real register and every instruction that
+"writes x0" writes nothing. Without the exclusion, `addi x0, x0, 0` would appear to
+write a destination and stall everything behind it — which is exactly why the
+canonical RISC-V NOP is safe to execute.
+
+WB is excluded because of the sub-cycle ordering: the register file writes early in
+the cycle and reads late, so an instruction reading in the same cycle as a WB sees
+the new value. This is why the table on the previous slide needed two stalls and
+not three. Say it out loud, because it is a genuine design decision and it is the
+one place where "read in ID, write at the end of WB" is not quite the whole story.
+
+The three actions are one signal. STALL freezes the PC, freezes IF/ID, and zeroes
+the control bits going into ID/EX — that zeroing *is* the NOP injection. There is no
+NOP instruction anywhere in this; a bubble is the absence of one.
+
+A common exam answer is "the NOP instruction is inserted into the pipeline". Push
+back: a real NOP would still occupy a decode slot and be decoded as `addi x0,x0,0`;
+the hardware does something cheaper, which is to clear the control bits so the slot
+does nothing at all. Both cost a cycle; only one costs a decode.
+:::
+
+## Bypass {.smaller}
+
+![](figs/fig-bypass.svg){height=400px}
+
+The value `sub` needs already exists — in EX/MEM, one stage ahead. **Wire it round
+to the ALU input instead of waiting for it to reach the register file.**
+
+::: {.fragment}
+`add`'s result is in EX/MEM during cycle 5, which is exactly when `sub` is in EX.
+Zero stalls.
+:::
+
+::: {.notes}
+The insight is on the previous slide but stated as a picture here: the value is not
+late, it is *in the wrong place*, so move it. The ALU inputs stop being wired
+straight to the register file and start going through a mux with three sources:
+
+- the register file value that ID read (the normal case),
+- the EX/MEM register — the previous instruction's ALU result,
+- the MEM/WB register — the previous-previous instruction's result, which for a
+  load is the loaded data.
+
+Two of these muxes, one per ALU input, and the select comes from comparing `rs1`
+and `rs2` against the destination registers in EX/MEM and MEM/WB. If both match,
+the *nearer* producer wins — EX/MEM over MEM/WB — because it is the more recent
+value. That priority is not a detail: get it backwards and you forward a stale
+value from two instructions ago over a fresh one from one instruction ago.
+
+The result for our program: zero stalls. `add` computes `x6` in cycle 4 and it is
+sitting in EX/MEM during cycle 5, which is when `sub` is in EX. The two cycles of
+stalling from the previous slide disappear.
+
+Say clearly that bypass does not make the *program* faster in the sense of fewer
+instructions; it removes the bubbles, so CPI goes back to what the clean machine
+had. The cost is paid in silicon, and that is the next slide.
+:::
+
+## What Bypassing Costs {.smaller}
+
+- **Wires.** Every ALU input now has three sources, and the wires have to reach
+  across the datapath. They fan out, they are long, and they carry 64 bits each.
+- **Muxes.** Two wide muxes in front of the ALU, each with a compare and a priority
+  encoder deciding the select.
+- **A longer EX stage.** The mux delay sits inside the critical path, so bypassing
+  can cost clock frequency — the very thing the pipeline was built to buy.
+- **A design choice, not a correctness one.** How many bypass paths to build is a
+  CPI-versus-silicon trade. Fewer bypasses means more stalls, and the machine is
+  still correct.
+
+| Producer → consumer distance | Where the value is | Path needed |
+|---|---|---|
+| 1 instruction (adjacent) | EX/MEM | one bypass |
+| 2 instructions | MEM/WB | a second bypass |
+| 3 or more | register file | none — the write is visible |
+
+::: {.notes}
+The point of this slide is that bypassing is not free, and that the trade is a
+*design* trade rather than a correctness one — every variant is a correct machine,
+they just differ in CPI and in area.
+
+The clock point is the interesting one and students miss it. The whole reason for
+pipelining was `t_CLK = slowest stage`. Put a 3:1 mux and a long wire in front of
+the ALU, and the EX stage gets slower, so the clock gets slower. Bypassing can eat
+part of the gain it is trying to protect. Real designs balance this: they bypass
+what matters and stall on what does not.
+
+Concretely for our core: the C906 forwards operands in the integer unit, and the
+manual's claim is that single-cycle ALU instructions then have no data-hazard
+stall. That is the "we built the bypass" statement. It does *not* say every
+dependency is free — which is the next slide.
+
+If someone asks "why not bypass everything, including from WB?" — you can, and for
+distance-two dependencies you must use MEM/WB. The question is how many paths you
+pay for versus how often each one fires. A dependency on an instruction three or
+more back is already covered by the register file, so there is a natural limit.
+:::
+
+## Load-to-Use {.smaller}
+
+![](figs/fig-loaduse.svg){height=390px}
+
+`ld` produces `x5` at the end of MEM. `add` needs it at the start of EX. **Both are
+cycle 4** — the value is needed at the moment it is being produced.
+
+::: {.fragment}
+One stall, even with full bypassing. This is the case forwarding cannot remove, and
+the reason our core needs both mechanisms.
+:::
+
+::: {.notes}
+Change one instruction and bypass stops being enough. A load's value does not exist
+at the end of EX; it exists at the end of MEM, one stage later than an ALU result.
+
+Look at the two outlined cells: `ld`'s MEM and `add`'s EX are the *same cycle*. `add`
+wants the value during cycle 4, and `ld` has it at the end of cycle 4. There is no
+mux setting that fixes "one cycle too early" — the value simply is not there yet.
+
+So `add` waits one cycle, and *then* the bypass works: in cycle 5 the value is in
+MEM/WB, and the same mux that was going to take it from EX/MEM takes it from MEM/WB
+instead. One bubble, not two — bypassing has already saved us a cycle here, because
+without it we would have waited for the write-back.
+
+This is the load-to-use stall, and it is the one every real compiler tries to
+schedule around. It is also why the C906's forwarding quote is not the end of the
+story: forwarding removes the ALU-to-ALU stall, and this one remains.
+
+Worth connecting back to Part 0: a load already takes longer than an ALU op because
+it uses the memory stage. The pipeline makes that visible as a timing hazard rather
+than as a longer instruction.
+:::
+
+## What We Bought {.smaller}
+
+| | **Stall** | **Bypass** |
+|---|---|---|
+| Paid in | cycles — CPI goes up | silicon — wires, muxes, clock |
+| Correctness | always | always |
+| Fails on | nothing | load-to-use, which still needs one stall |
+| Logic | a comparator bank and a freeze | a forwarding network and a priority rule |
+| Our core | yes, for loads | yes, in the integer unit |
+
+**More stages means more frequent hazards**: a deeper pipeline lowers $t_{CLK}$ and
+raises CPI. The two effects pull against each other, and finding the balance is the
+whole art of pipeline design.
+
+::: {.notes}
+This is the part's ledger. Neither mechanism is "the answer"; they are two currencies
+for the same purchase, and every real core spends both.
+
+The last line is the one to leave them with, because it is the bridge to Part V: the
+hazard *rate* is a property of the pipeline depth, not of the program. Deepen the
+pipeline and every dependency that used to be one stage apart is now two, three,
+four stages apart — so more of them need bypassing, and the ones that cannot be
+bypassed cost more cycles each. You buy frequency and pay CPI.
+
+That trade is exactly what the A53 (8 stages) and Zen 5 (much deeper, out of order)
+are doing differently from our 5-stage core, and it is where Part V goes.
+
+Ask them to state the trade in one sentence. A good answer: "a deeper pipeline makes
+each instruction's result arrive later relative to the instructions behind it, so
+more of them collide."
+:::
+
+## The Compiler Can Help {.smaller}
+
+The load-to-use stall is a property of the *program order*, and the compiler chooses
+that order.
+
+:::: {.columns}
+::: {.column width="50%"}
+**Before** — one stall
+
+```asm
+ld   x5, 0(x10)
+add  x6, x5, x1
+```
+:::
+::: {.column width="50%"}
+**After** — none
+
+```asm
+ld   x5, 0(x10)
+and  x7, x8, x9      # independent
+add  x6, x5, x1
+```
+:::
+::::
+
+Reordering works when independent instructions exist to fill the gap. It cannot
+create them.
+
+::: {.fragment}
+> "I'm altering the ISA. Pray I do not alter it further."
+>
+> The 1990s answer was a **delay slot**: the instruction after a load executes
+> unconditionally, and the compiler fills it. It works, it is in MIPS and SPARC,
+> and it is a trap — **ISAs outlive implementations.** The slot is a burden
+> forever, for a pipeline that will be replaced.
+:::
+
+::: {.notes}
+Two lessons here, one technical and one about design.
+
+Technical: the stall is caused by the *distance* between the producer and the
+consumer, and the compiler controls distance. Move an independent instruction
+between them and the bubble disappears — no new hardware, no cost. This is why
+`-O2` matters on in-order cores, and why the scheduling pass in a compiler is not
+decoration.
+
+Be honest about the limit: this only works if there is an independent instruction
+available. In tight pointer-chasing code there often is not, and then the hardware
+stall is unavoidable. Compilers reduce stalls; they do not remove them.
+
+Design: the tempting fix is to make the ISA do the work — a load delay slot, where
+the instruction after the load always executes. MIPS and SPARC did it. The cost is
+that every program ever written afterwards has to reason about a pipeline detail
+forever, and when the pipeline changes the ISA cannot.
+
+The quote is a joke about a real failure mode: an ISA is a contract with every
+compiler, debugger, and binary that will ever exist. Changing it to suit one
+implementation is borrowing against all of them. RISC-V has no delay slots, which is
+one of the things it got right.
+
+If they ask: the modern version of the same mistake is exposing cache line size or
+pipeline depth in a portable ABI. Same trap, different decade.
+:::

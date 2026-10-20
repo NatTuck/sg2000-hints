@@ -72,6 +72,19 @@ $code-block-font-size: 0.78em;
 .reveal table.pipe-tbl td.c5 { background: #e6e1f4; }
 .reveal table.pipe-tbl td.c6 { background: #f1ecd8; }
 
+/* a bubble: the control bits are zeroed, so nothing happens in this slot */
+.reveal table.pipe-tbl td.nop {
+  background: #eef0f3;
+  color: #8a94a3;
+  font-style: italic;
+}
+
+/* a frozen stage: the instruction cannot advance */
+.reveal table.pipe-tbl td.frozen {
+  border-left: 2px dashed #c2410c;
+  border-right: 2px dashed #c2410c;
+}
+
 /* monospace signal names in tables should not look like links */
 .reveal table code {
   color: #12365f;

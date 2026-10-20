@@ -301,3 +301,99 @@ fig_regs()
 fig_overlap()
 fig_hazard()
 fig_value()
+
+
+# =====================================================================
+# FIG 6 — bypass muxes on the ALU inputs
+# =====================================================================
+def fig_bypass():
+    W, H = 1140, 430
+    b = [txt(24, 34, "Bypassing: three sources into each ALU input", 21, "start", DARK, bold=True)]
+
+    def mux(bx, by, bh, rows, out_lab, in_labels):
+        # box
+        b.append(rect(bx, by, 76, bh, LIGHT, INK, 2.2, rx=4))
+        b.append(txt(bx + 38, by + bh / 2 - 4, "MUX", 12.5, "middle", DARK, bold=True))
+        b.append(txt(bx + 38, by + bh / 2 + 13, out_lab, 12, "middle", ACCENT, bold=True))
+        for ry, lab in zip(rows, in_labels):
+            b.append(line(bx - 68, ry, bx - 3, ry, INK, 1.8, arrow=True))
+            b.append(txt(bx - 76, ry + 5, lab, 12.5, "end", DARK))
+        # select
+        b.append(line(bx + 38, by + bh + 26, bx + 38, by + bh + 2, ACCENT, 1.6, dash="5,4", arrow=True))
+        b.append(txt(bx + 48, by + bh + 22, "match", 10.5, "start", ACCENT, italic=True))
+
+    srcs = ["EX/MEM \u00b7 Y", "MEM/WB \u00b7 Y or RD", "ID/EX \u00b7 A"]
+    mux(322, 74, 136, [96, 142, 188], "A", srcs)
+    srcs_b = ["EX/MEM \u00b7 Y", "MEM/WB \u00b7 Y or RD", "ID/EX \u00b7 B"]
+    mux(322, 254, 136, [276, 322, 368], "B", srcs_b)
+
+    # ALU
+    b.append(rect(470, 110, 130, 244, "#ffffff", INK, 2.2, rx=6))
+    b.append(txt(535, 226, "ALU", 17, "middle", DARK, bold=True))
+    b.append(line(398, 142, 470, 142, INK, 2, arrow=True))
+    b.append(line(398, 322, 470, 322, INK, 2, arrow=True))
+    b.append(txt(434, 134, "A", 12, "middle", GRAY, italic=True))
+    b.append(txt(434, 314, "B", 12, "middle", GRAY, italic=True))
+
+    b.append(line(600, 232, 748, 232, INK, 2, arrow=True))
+    b.append(txt(674, 222, "Y", 13, "middle", DARK, bold=True))
+    b.append(rect(748, 202, 160, 60, LIGHT, INK, 2, rx=4))
+    b.append(txt(828, 228, "EX/MEM", 12.5, "middle", DARK, bold=True))
+    b.append(txt(828, 246, "next cycle", 10.5, "middle", GRAY, italic=True))
+
+    save("fig-bypass.svg", W, H, b)
+
+
+# =====================================================================
+# FIG 7 — load-to-use: produced and needed in the same cycle
+# =====================================================================
+def fig_loaduse():
+    W, H = 1160, 412
+    b = [txt(24, 34, "A load is one stage too late", 21, "start", DARK, bold=True)]
+
+    insts = ["ld x5", "add x6", "sub x7", "and x8", "or x9", "xor x19"]
+    rows = ["IF", "ID", "EX", "MEM", "WB"]
+    x0, colw, y0, rowh = 150, 100, 76, 58
+    ncol = 10
+
+    for c in range(ncol + 1):
+        b.append(line(x0 + c * colw, y0, x0 + c * colw, y0 + 5 * rowh, "#d7dee8", 1))
+    for r in range(len(rows) + 1):
+        b.append(line(x0, y0 + r * rowh, x0 + ncol * colw, y0 + r * rowh, "#d7dee8", 1))
+    for c in range(ncol):
+        b.append(txt(x0 + c * colw + colw / 2, y0 - 12, str(c + 1), 12.5, "middle", GRAY))
+    for r, name in enumerate(rows):
+        b.append(txt(x0 - 14, y0 + r * rowh + rowh / 2 + 5, name, 13.5, "end", DARK, bold=True))
+
+    for i, inst in enumerate(insts):
+        for k in range(5):
+            c = i + k
+            if c >= ncol:
+                continue
+            cx = x0 + c * colw + 3
+            cy = y0 + k * rowh + 3
+            b.append(rect(cx, cy, colw - 6, rowh - 6, PAL[i % len(PAL)], "#ffffff", 1, rx=4))
+            b.append(txt(cx + (colw - 6) / 2, cy + (rowh - 6) / 2 + 4.5, inst, 12.5, "middle", DARK))
+
+    # ld produces x5 in MEM (instr 0, cycle 4); add needs it in EX (instr 1, cycle 4)
+    for i, k in ((0, 3), (1, 2)):
+        cx = x0 + (i + k) * colw + 3
+        cy = y0 + k * rowh + 3
+        b.append(rect(cx, cy, colw - 6, rowh - 6, "none", ACCENT, 3, rx=4))
+
+    col = x0 + 3.5 * colw
+    b.append(txt(col, y0 - 34, "both in cycle 4", 12.5, "middle", ACCENT, bold=True))
+    b.append(line(col, y0 + 2 * rowh - 2, col, y0 + 3 * rowh + 2, ACCENT, 2, arrow=True))
+    b.append(line(col, y0 + 3 * rowh + 2, col, y0 + 2 * rowh - 2, ACCENT, 2, arrow=True))
+
+    save("fig-loaduse.svg", W, H, b)
+
+
+fig_bypass()
+fig_loaduse()
+
+fig_stations()
+fig_regs()
+fig_overlap()
+fig_hazard()
+fig_value()

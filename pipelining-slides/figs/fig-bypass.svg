@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1140" height="430" viewBox="0 0 1140 430">
+<defs><marker id="arw_1a4f8b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a4f8b"/></marker><marker id="arw_c2410c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/></marker><marker id="arw_7ea2c8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7ea2c8"/></marker><marker id="arw_6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker><marker id="arw_12365f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#12365f"/></marker></defs>
+<rect width="1140" height="430" fill="#ffffff"/>
+<text x="24.0" y="34.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="21" fill="#12365f" font-weight="700">Bypassing: three sources into each ALU input</text>
+<rect x="322.0" y="74.0" width="76.0" height="136.0" rx="4" fill="#e8eef7" stroke="#1a4f8b" stroke-width="2.2" opacity="1.0"/>
+<text x="360.0" y="138.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f" font-weight="700">MUX</text>
+<text x="360.0" y="155.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#c2410c" font-weight="700">A</text>
+<line x1="254.0" y1="96.0" x2="319.0" y2="96.0" stroke="#1a4f8b" stroke-width="1.8" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<text x="246.0" y="101.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f">EX/MEM · Y</text>
+<line x1="254.0" y1="142.0" x2="319.0" y2="142.0" stroke="#1a4f8b" stroke-width="1.8" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<text x="246.0" y="147.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f">MEM/WB · Y or RD</text>
+<line x1="254.0" y1="188.0" x2="319.0" y2="188.0" stroke="#1a4f8b" stroke-width="1.8" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<text x="246.0" y="193.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f">ID/EX · A</text>
+<line x1="360.0" y1="236.0" x2="360.0" y2="212.0" stroke="#c2410c" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="5,4" marker-end="url(#arw_c2410c)" opacity="1.0"/>
+<text x="370.0" y="232.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" fill="#c2410c" font-style="italic">match</text>
+<rect x="322.0" y="254.0" width="76.0" height="136.0" rx="4" fill="#e8eef7" stroke="#1a4f8b" stroke-width="2.2" opacity="1.0"/>
+<text x="360.0" y="318.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f" font-weight="700">MUX</text>
+<text x="360.0" y="335.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#c2410c" font-weight="700">B</text>
+<line x1="254.0" y1="276.0" x2="319.0" y2="276.0" stroke="#1a4f8b" stroke-width="1.8" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<text x="246.0" y="281.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f">EX/MEM · Y</text>
+<line x1="254.0" y1="322.0" x2="319.0" y2="322.0" stroke="#1a4f8b" stroke-width="1.8" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<text x="246.0" y="327.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f">MEM/WB · Y or RD</text>
+<line x1="254.0" y1="368.0" x2="319.0" y2="368.0" stroke="#1a4f8b" stroke-width="1.8" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<text x="246.0" y="373.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f">ID/EX · B</text>
+<line x1="360.0" y1="416.0" x2="360.0" y2="392.0" stroke="#c2410c" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="5,4" marker-end="url(#arw_c2410c)" opacity="1.0"/>
+<text x="370.0" y="412.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" fill="#c2410c" font-style="italic">match</text>
+<rect x="470.0" y="110.0" width="130.0" height="244.0" rx="6" fill="#ffffff" stroke="#1a4f8b" stroke-width="2.2" opacity="1.0"/>
+<text x="535.0" y="226.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#12365f" font-weight="700">ALU</text>
+<line x1="398.0" y1="142.0" x2="470.0" y2="142.0" stroke="#1a4f8b" stroke-width="2" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<line x1="398.0" y1="322.0" x2="470.0" y2="322.0" stroke="#1a4f8b" stroke-width="2" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<text x="434.0" y="134.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">A</text>
+<text x="434.0" y="314.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">B</text>
+<line x1="600.0" y1="232.0" x2="748.0" y2="232.0" stroke="#1a4f8b" stroke-width="2" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<text x="674.0" y="222.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#12365f" font-weight="700">Y</text>
+<rect x="748.0" y="202.0" width="160.0" height="60.0" rx="4" fill="#e8eef7" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<text x="828.0" y="228.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f" font-weight="700">EX/MEM</text>
+<text x="828.0" y="246.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" fill="#6b7280" font-style="italic">next cycle</text>
+</svg>
