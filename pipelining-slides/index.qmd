@@ -32,7 +32,8 @@ cycle. The questions are the ones you would ask of any such machine.
 2. **Data hazards** — the register file hands back a stale value; stall, bypass,
    or speculate
 3. **Control hazards** — NextPC is not known until the branch is decided
-4. **Exceptions and interrupts** — implicit branches, and how to flush cleanly
+4. **Exceptions and interrupts** — control transfers you cannot predict, and why
+   the machine waits until retire to take them
 5. **What the C906 really does** — and what changes when the pipeline gets deeper
 6. **Synthesis** — CPI accounting, and quoted versus derived
 
@@ -1168,4 +1169,327 @@ everything in this part was about predicting it. The next part is about the PC c
 nobody asked for — a page fault, a misaligned access, an interrupt arriving between
 two instructions — where the machine has to be sure that the instruction it is
 cancelling never happened.
+:::
+
+# Part IV — Exceptions and Interrupts
+
+A branch changes the PC on purpose. An exception changes it without asking — and
+then has to put everything back.
+
+::: {.notes}
+Part III was about a control transfer we could see coming. This part is about the
+ones we cannot, and it turns out to be a different problem in an interesting way.
+
+The surface similarity is real: both are a change of PC, both need the wrong-path
+instructions annulled, both reuse the flush we built for branches. If you stopped
+there you would conclude this part is Part III with extra bookkeeping.
+
+The difference is that a branch never comes back. Once you have redirected the PC,
+the old instruction stream is gone and nobody asks about it again. A trap has to
+*resume*: the handler runs, calls `mret`, and the program continues as if nothing
+happened — with the same registers, the same memory, and the instruction that
+faulted either completed or did not happen at all. There is no third option.
+
+That resumption requirement is what makes this part hard, and it is what forces the
+one design decision the whole part hangs on: when in the pipeline do you act on a
+fault you have already detected?
+
+Preview the inversion, because it is the payoff: Part III's lesson was that a
+branch should be decided as *early* as possible. Part IV's lesson is the opposite.
+:::
+
+## The Unasked Branch {.smaller}
+
+```asm
+    addi x10, x0, 1      # fd = 1, stdout
+    addi x17, x0, 64     # syscall 64: write
+    ecall                # the PC leaves the program here
+    addi x10, x0, 0      # ... and must come back to exactly here
+```
+
+`ecall` is a control transfer, like a branch. Three things about it are different:
+
+| | A branch | A trap |
+|---|---|---|
+| Where it goes | `PC + imm` — **in the instruction** | `mtvec` — a CSR, set up once at boot |
+| Why it went | the comparison, computed in EX | `mcause` — a number the hardware writes |
+| Coming back | it does not come back | **it must**, at exactly the right PC |
+
+::: {.fragment}
+So the machine has to be able to say, precisely, *which instruction it was on*. That
+is `mepc`. Everything else in this part is about making that one register true.
+:::
+
+::: {.fragment}
+A branch is *decided* by hardware. A trap is only *raised* by hardware — the handler
+reads `mcause` and decides what to do, in software, on the other side of the jump.
+:::
+
+::: {.notes}
+Use a system call rather than a page fault as the first example, because it is the
+one trap a student has certainly triggered: `printf` eventually does this.
+
+Read the program. `a7` (`x17`) is the syscall number, 64 is `write` on Linux/RISC-V;
+`a0`–`a2` would carry the arguments. The `ecall` instruction does not name a target,
+does not name a handler, and does not say what it wants — it just says "stop, and ask
+the machine mode". Everything else comes from CSRs and from convention.
+
+Three differences, and the third is the one that matters:
+
+1. The target is not in the instruction. It is `mtvec`, set up once at boot. That
+   means the fetch stage cannot compute where to go the way it could for a branch —
+   there is no `PC + imm` to add. It is a register read.
+2. The reason is data, not control flow. `mcause` is a number the hardware writes so
+   the handler can switch on it. A branch's reason is implicit in which branch it was.
+3. A branch is a one-way trip; a trap must return. And "return" means the handler
+   restores the PC to the *faulting instruction* or to the one after it, depending on
+   the cause — `mepc` plus a decision the handler makes.
+
+That third point is why `mepc` is the load-bearing register. If `mepc` is wrong by
+one instruction, the program either re-executes something that already happened or
+skips something that never did. Neither is recoverable in general. So the design goal
+of the whole part is: **make `mepc` true**, always, under every interleaving.
+:::
+
+## The Ordering Problem {.smaller}
+
+Faults are noticed at different depths: **at decode** (an illegal encoding, `ebreak`,
+`ecall`), **in EX** (a misaligned address), **in MEM** (a page fault, when the MMU
+answers) — and **nowhere at all** for an interrupt. So two can be in flight at once.
+
+<table class="pipe-tbl">
+<thead>
+<tr><th></th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr>
+</thead>
+<tbody>
+<tr><td>IF</td><td class="c1">ld x5</td><td class="c2">ecall</td><td class="c3">add x6</td><td></td><td></td></tr>
+<tr><td>ID</td><td></td><td class="c1">ld x5</td><td class="c2">ecall</td><td class="c3">add x6</td><td></td></tr>
+<tr><td>EX</td><td></td><td></td><td class="c1">ld x5</td><td class="c2 fault">ecall</td><td class="c3 killed">add x6</td></tr>
+<tr><td>MEM</td><td></td><td></td><td></td><td class="c1 fault">ld x5</td><td class="c2 killed">ecall</td></tr>
+<tr><td>WB</td><td></td><td></td><td></td><td></td><td class="c1 fault">ld x5</td></tr>
+</tbody>
+</table>
+
+In cycle 4 the `ecall` is in EX and the `ld` is in MEM. **Both fault, in the same
+cycle** — and the `ld` is the older instruction.
+
+::: {.fragment}
+Trap on the `ecall` and `mepc` names the wrong instruction. Worse, the `ld`'s page
+fault becomes **unreportable** — the instruction that raised it has already been
+flushed.
+:::
+
+::: {.fragment}
+So a fault is not acted on where it is found. It is **carried** — to the one stage
+where instructions leave in order.
+:::
+
+::: {.notes}
+This is the money slide of the part, and the table is worth walking slowly.
+
+The setup: `ld x5, 0(x10)` touches a page that is not mapped, so it faults in MEM. The
+very next instruction is an `ecall`, which faults in EX. The `ld` is at IF 1, so MEM 4.
+The `ecall` is at IF 2, so EX 4. **Same cycle, two faults, and the older one is in the
+later stage.**
+
+Now suppose the machine traps the moment it detects. In cycle 4 it sees the `ecall` in
+EX, writes `mepc` = the `ecall`'s PC, and flushes everything behind it — including the
+`ld` in MEM. Two things are now broken, and the second is worse than the first:
+
+- `mepc` is wrong. The handler will return to the `ecall`, and the program will loop
+  or corrupt state.
+- The page fault is *gone*. The `ld` was flushed, so the fault it raised was flushed
+  with it. The handler runs, returns to the `ecall`, and the program continues as if
+  the load had succeeded. The memory it was going to read is still unmapped.
+
+That second failure is the one to make them say out loud, because it is not a
+performance bug or a corner case — it is silent data corruption, and no amount of
+testing finds it.
+
+The fix is on the last fragment, and it is the whole part: **do not act where you
+detect.** Carry the flag. Note that the `ld` in MEM at cycle 4 and the `ld` in WB at
+cycle 5 are both outlined: the fault is not raised in MEM, it is *recorded* in MEM and
+raised at WB.
+:::
+
+## Retire {.smaller}
+
+![](figs/fig-trap.svg){height=248px}
+
+> 异常在指令的边界上被处理，即处理器在指令退休时响应异常……**即使异常指令退休前被识别，异常也要在相应的指令退休时才会被处理。**
+>
+> *Exceptions are handled at instruction boundaries: the processor responds when the
+> instruction retires. Even if the exception is identified before it retires, it is
+> only handled when it retires.* — C906 manual, §3.5
+
+**Detect anywhere, act in one place.**
+
+::: {.fragment}
+Part III wanted the decision as **early** as possible. Part IV wants it as **late** as
+possible — a branch wants to stop guessing, a trap wants to be sure of the order.
+:::
+
+::: {.notes}
+The figure is the mechanism. Four stages can notice a fault, and none of them act on
+it. The flag joins the other things an instruction carries down the pipe — the
+destination register, the control bits, the exception cause — and is acted on at WB,
+where instructions leave in order.
+
+This is a callback to Part I's "The Only New State" slide. There we said the pipeline
+registers carry `rd` and the control bits because the instruction word is long gone by
+the time WB needs it. Same reason here: by the time we act on the trap, the instruction
+that caused it is a handful of signals in a pipeline register. So the cause and the
+faulting address ride along with it.
+
+Why WB and not some earlier stage? Because WB is where instructions *retire* — where
+they commit and become visible. Retiring in order is what gives you the ordering for
+free: the first fault to reach WB is by definition the oldest fault, and everything
+ahead of it has already committed. The manual's sentence about hardware guaranteeing
+that later instructions do not change state is exactly this: at the moment we act, the
+pipeline behind the faulting instruction is thrown away and has changed nothing.
+
+The quote is the part's thesis, and the second clause is the surprising one. The
+hardware is allowed to know early — it just is not allowed to *act* early. Say it as a
+slogan: detection is distributed, commitment is centralised.
+
+Then the inversion, which is the thing to leave on the board. Part III and Part IV ask
+the same question and answer it oppositely. For a branch, deciding late costs cycles
+and buys nothing. For a trap, deciding early costs correctness. The lesson is not
+"early is good" or "late is good" — it is that the right moment is set by what you are
+protecting. A branch is protecting throughput; a trap is protecting the meaning of the
+program.
+:::
+
+## What a Trap Saves {.smaller}
+
+The whole architectural effect of a trap, in five steps:
+
+| | Machine mode, on entry |
+|---|---|
+| 1 | `mepc` ← the PC of the instruction that faulted |
+| 2 | `mcause` ← why; `mtval` ← the bad address, or the offending instruction bits |
+| 3 | `mstatus.MPIE` ← `MIE`; `MIE` ← 0 |
+| 4 | `mstatus.MPP` ← the privilege mode we came from; switch to machine mode |
+| 5 | PC ← `mtvec`, and the handler starts |
+
+And `mret` runs it backwards: `PC ← mepc`, `MIE ← MPIE`, `MPIE ← 1`.
+
+::: {.fragment}
+That is **all** the state. The register file, the caches, the pipeline registers —
+none of it is saved. That is only possible because the trap is taken at an instruction
+boundary: at the moment we act, nothing is half-done.
+:::
+
+::: {.notes}
+Five steps sounds like a lot; it is three facts and two pieces of housekeeping. Where
+were we (`mepc`), why did we stop (`mcause`, `mtval`), and do not get interrupted while
+handling this (`MIE` → 0, old value into `MPIE`). Then jump.
+
+`mtval` is worth a sentence because students assume it is always an address. The manual
+says it is the faulting fetch address, or the load/store address, or the *instruction
+code* — depending on the cause. For an illegal instruction you want the encoding, so
+you can disassemble the thing that broke; for a page fault you want the address. The
+handler has to know which it is getting, which is why `mcause` comes first.
+
+The `MIE` handling is the only subtle bit. Clearing `MIE` on entry means the handler
+runs with interrupts off, which is why a handler must be short or must explicitly
+re-enable. `MPIE` exists so `mret` can restore whatever the setting was before — not
+"enable", but "restore". Get that wrong and either you lose interrupts forever or you
+enable them in a context that had deliberately disabled them.
+
+The fragment is the point of the slide. Compare with what a context switch saves: the
+whole register file. A trap saves three CSRs, because the trap is precise — every
+instruction before it has committed, none after it has started, and the pipeline
+registers hold only instructions we are about to throw away. **Precision is what makes
+the save small.** An imprecise machine has to save much more, or replay from a
+checkpoint, and that is the thread Part V picks up.
+:::
+
+## Interrupts Are the Same Thing {.smaller}
+
+An interrupt is a trap with no instruction to blame.
+
+- **Same mechanism.** One `mcause` space — the top bit set means interrupt — one
+  `mtvec`, one `mret`.
+- **Same boundary.** It is taken between instructions, so `mepc` is the PC of the
+  instruction that *would* have run next.
+- **New: masking and priority.** `mstatus.MIE` globally, the `MIE` CSR per source, and
+  outside the core the **PLIC** (1023 sources, 32 priority levels) and **CLINT** (timer
+  and software interrupts).
+
+::: {.fragment}
+The unification is the design statement. x86 keeps exceptions and interrupts in
+separate machinery; RISC-V has one cause register, one vector, one return. An implicit
+branch is a branch, so it uses the branch hardware.
+:::
+
+::: {.fragment}
+`MIE` is cleared on entry so the handler cannot be interrupted by the very source it
+is handling. Nesting is possible — but it is a decision the handler makes, not
+something the hardware does on its own.
+:::
+
+::: {.notes}
+This slide is short on purpose. Once retire is understood, an interrupt adds almost
+nothing to the pipeline story — which is the lesson.
+
+The one genuine difference is the source. An exception is raised *by* an instruction,
+so there is a PC to save. An interrupt arrives from outside with nothing to blame, so
+the machine has to choose a moment, and the only defensible moment is an instruction
+boundary — which is exactly where it already acts on exceptions. So the same mechanism
+serves both, and `mepc` for an interrupt is simply the PC of the next instruction,
+which is what makes the return land in the right place.
+
+What is genuinely new is arbitration, and that lives outside the core. The PLIC takes
+up to 1023 external sources, each with a priority, and hands the core one interrupt ID;
+the core reads it from the claim register and writes it back when done. CLINT handles
+the timer and software interrupts that belong to the core itself. The manual is
+detailed about this (§9, §10) and we are not going to follow it — the point is that
+priority and masking are a *system* problem, not a pipeline problem.
+
+Worth one line on why `MIE` is cleared on entry: the handler is itself a program, and
+if it could be interrupted by the same source immediately it would never make progress.
+Nested interrupts are possible but deliberate, not automatic.
+
+The fragment is the design point worth remembering. Having one path for both is why
+RISC-V's trap handling is a page of pseudocode rather than a chapter.
+:::
+
+## What We Bought {.smaller}
+
+| | **Part III — branches** | **Part IV — traps** |
+|---|---|---|
+| Penalty | 1–2 cycles | ~5 cycles: the flush, plus the handler's prologue |
+| Frequency | about 1 in 5 instructions | 10⁻³ to 10⁻⁶ |
+| CPI contribution | 0.2 – 0.4 | at most 0.005, usually far less |
+| What you optimise | **speed** | **correctness** |
+
+::: {.fragment}
+An out-of-order machine cannot retire in order for free — it finishes instructions in
+whatever order they become ready. It needs a **reorder buffer** to put them back in
+program order, and the reason the reorder buffer exists is to make exceptions precise.
+:::
+
+::: {.notes}
+The contrast is the slide. Part III had a tiny penalty at enormous frequency, so the
+whole game was shaving cycles. Part IV has a large penalty at negligible frequency, so
+the game is not speed at all — it is never being wrong.
+
+Five cycles for a trap, roughly: the pipeline is flushed and refilled, and then the
+handler has to save registers and work out what happened before it does anything
+useful. Real handlers cost tens of cycles. It does not matter. A system call happens
+once per thousand to once per million instructions; a page fault happens once per 4 KB
+of newly touched memory. Multiply a big number by a tiny one and you get nothing.
+
+Which is the useful engineering lesson: **you do not optimise everything.** You find
+the term that dominates and you spend there. A core that halved its trap latency would
+gain nothing measurable; a core that got `mepc` wrong once in a billion instructions
+would be unusable.
+
+The closing fragment sets up Part V. Everything in this part was easy *because* the
+five-stage machine retires in order — WB is the last stage, so "in order" is free. An
+out-of-order core finishes instructions out of order and must reconstruct program order
+before it can commit. That reconstruction is the reorder buffer, and its *purpose* is
+precise exceptions. Once you see that, out-of-order design stops looking like a bag of
+tricks and starts looking like one idea with a lot of consequences.
 :::
