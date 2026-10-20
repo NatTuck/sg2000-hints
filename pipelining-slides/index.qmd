@@ -742,3 +742,430 @@ one of the things it got right.
 If they ask: the modern version of the same mistake is exposing cache line size or
 pipeline depth in a portable ABI. Same trap, different decade.
 :::
+
+# Part III — Control Hazards
+
+A data hazard means the value is not ready yet. A control hazard means you do not
+know what to fetch.
+
+::: {.notes}
+Part II ended with a ledger: stall and bypass are two currencies for the same
+purchase. This part has a different shape, and it is worth naming the difference
+before we start.
+
+A data hazard is about a *value*. The value exists, it is in the wrong place, and
+there are exactly two things to do about it: wait for it, or wire it over. Both
+fixes are local — they touch one instruction and its neighbour.
+
+A control hazard is about an *address*. IF has to put something into IF/ID every
+cycle, and the branch has not yet said which of two addresses to use. Nothing is in
+the wrong place. The information does not exist yet, and it will not exist for two
+more cycles.
+
+That gives two independent questions, and every mechanism in this part answers
+exactly one of them:
+
+- **Latency** — when the guess is wrong, how many cycles do we lose? That is a
+  property of *where the branch is checked*.
+- **Accuracy** — how often is the guess wrong? That is a property of *how we guess*.
+
+A predictor answers the second question and does nothing at all for the first.
+Nothing answers the first except moving the check earlier. Most of this part is
+about accuracy, because that is where the interesting hardware is; latency gets one
+slide, and one surprising answer.
+:::
+
+## The Branch {.smaller}
+
+```asm
+loop:  ld    x5, 0(x10)
+       addi  x10, x10, 8
+       bne   x10, x11, loop
+```
+
+`bne` is the first instruction in this deck whose next PC is not `PC + 4`. IF must
+choose a next address *this cycle*, and there are two candidates.
+
+![](figs/fig-nextpc.svg){height=298px}
+
+::: {.fragment}
+This loop has no data hazards: `ld` reads `x10` before `addi` writes it, and
+`addi` → `bne` is adjacent and covered by the EX/MEM bypass. **Every cycle it loses
+from here is a control cycle.**
+:::
+
+::: {.fragment}
+Both inputs to the decision are already in ID — the register file is read there, and
+the immediate is in the instruction word. The information exists in cycle 2. The
+**comparison hardware** is in the ALU, in EX.
+:::
+
+::: {.notes}
+A loop is the smallest program with a branch in it, and this one is chosen so that
+the branch is the only thing wrong with it.
+
+Check the data hazards out loud, because a student who is still thinking about Part
+II will assume there is one. `ld x5, 0(x10)` reads `x10` in ID, at cycle 2.
+`addi x10, x10, 8` writes `x10` in WB, at cycle 6 — a read before a write, which is
+no hazard at all. Then `addi` writes `x10` and `bne` reads it, one instruction
+apart, which is exactly the case the EX/MEM bypass was built for. So this loop runs
+at zero data stalls, and every cycle we lose from here is the branch's fault. Keep
+the accounting clean like this; it is what makes the CPI numbers at the end of the
+part believable.
+
+Now the picture. The PC feeds two adders: one computes `PC + 4`, the other computes
+`PC + immediate`, and a mux picks one. On every other instruction the mux is not
+really a mux — the select is tied to "not taken" and `PC + 4` always wins. `bne` is
+the instruction that makes the select a real question.
+
+The select is drawn dashed and red because it is the thing that is not ready. The
+ALU decides it at the end of EX, which is cycle 3 of the branch's life. IF needed
+it in cycle 1. That gap is the entire part.
+
+Then the observation that makes the rest of the part possible, and it is worth
+asking the room to find it: both operands of the comparison are already available in
+ID. The register file is read in ID; the immediate comes out of the instruction word
+in ID; the PC is right there. Nothing is missing. What is missing is the *hardware*
+to compare two registers in ID — our datapath put the only comparator in the ALU.
+That is a design choice, and it is the choice the C906 made differently.
+:::
+
+## The Shadow {.smaller}
+
+<table class="pipe-tbl">
+<thead>
+<tr><th></th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr>
+</thead>
+<tbody>
+<tr><td>IF</td><td class="c1">bne</td><td class="killed">X</td><td class="killed">Y</td><td class="c4">ld</td><td class="c5">addi</td><td class="c1">bne</td></tr>
+<tr><td>ID</td><td></td><td class="c1">bne</td><td class="killed">X</td><td class="nop">NOP</td><td class="c4">ld</td><td class="c5">addi</td></tr>
+<tr><td>EX</td><td></td><td></td><td class="c1">bne</td><td class="nop">NOP</td><td class="nop">NOP</td><td class="c4">ld</td></tr>
+<tr><td>MEM</td><td></td><td></td><td></td><td class="c1">bne</td><td class="nop">NOP</td><td class="nop">NOP</td></tr>
+<tr><td>WB</td><td></td><td></td><td></td><td></td><td class="c1">bne</td><td class="nop">NOP</td></tr>
+</tbody>
+</table>
+
+`bne` is checked in EX, at the end of cycle 3. Two instructions have been fetched
+behind it by then — `X` and `Y`, the code after the loop — and both are wrong.
+
+::: {.fragment}
+**Penalty: 2 cycles.** The first useful instruction enters IF in cycle 4 instead of
+cycle 2. Not 1, and not 3: the penalty is the number of instructions fetched between
+the branch and its check.
+:::
+
+::: {.notes}
+This is the same table shape as the stall slide in Part II, and that is deliberate —
+students should see that a bubble and an annulled instruction look identical from
+outside the pipeline. Only the cause is different.
+
+Read the top row left to right. IF fetches `bne` in cycle 1. It has to fetch
+something in cycle 2, and the only thing it can fetch is `PC + 4`, so it fetches `X`.
+Cycle 3, `Y`. Cycle 3 is also when `bne` reaches EX and the ALU compares `x10` with
+`x11` — and the branch is taken, so `X` and `Y` are both wrong.
+
+The struck-through cells are the moment of death. `X` dies in ID at cycle 3; `Y`
+dies in IF and never reaches ID at all. From cycle 4 the slots are bubbles, and they
+travel down the machine exactly like the stall bubbles from Part II.
+
+Give them the general rule, because it is the thing to carry away: **the penalty is
+the number of instructions fetched between the branch and its check.** Not a magic
+constant — a count. With the check in EX it is 2. Move the check one stage earlier
+and it is 1. This is why the same branch costs different numbers of cycles on
+different machines, and it is the whole subject of the "One Cycle" slide later in
+this part.
+
+One honest detail: a taken branch and a mispredicted branch produce the *same*
+table. Annulling two instructions because you guessed "not taken" and annulling two
+because you refused to guess look identical in the pipeline. Keep that in mind for
+the next slide.
+:::
+
+## Stall Until We Know {.smaller}
+
+<table class="pipe-tbl">
+<thead>
+<tr><th></th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr>
+</thead>
+<tbody>
+<tr><td>IF</td><td class="c1">bne</td><td class="frozen">held</td><td class="frozen">held</td><td class="c4">ld</td><td class="c5">addi</td><td class="c1">bne</td></tr>
+<tr><td>ID</td><td></td><td class="c1">bne</td><td class="nop">NOP</td><td class="nop">NOP</td><td class="c4">ld</td><td class="c5">addi</td></tr>
+<tr><td>EX</td><td></td><td></td><td class="c1">bne</td><td class="nop">NOP</td><td class="nop">NOP</td><td class="c4">ld</td></tr>
+<tr><td>MEM</td><td></td><td></td><td></td><td class="c1">bne</td><td class="nop">NOP</td><td class="nop">NOP</td></tr>
+<tr><td>WB</td><td></td><td></td><td></td><td></td><td class="c1">bne</td><td class="nop">NOP</td></tr>
+</tbody>
+</table>
+
+The fix that is never wrong: hold IF for the two cycles the branch is in flight, and
+fetch nothing at all. No wrong instruction is ever created, so nothing has to be
+killed.
+
+::: {.fragment}
+Two cycles on **every** branch, taken or not. The loop runs 3 + 2 = 5 cycles per
+iteration: **CPI 1.67**.
+:::
+
+::: {.fragment}
+A machine that stalls is a machine that is wrong every time, and pays for it every
+time. Guessing "not taken" costs the same two cycles but only on the taken branches —
+so guessing is never worse than waiting, and it costs nothing to try.
+:::
+
+::: {.notes}
+Note what is *not* frozen here: only IF. The branch itself keeps advancing to EX,
+because that is where the comparison lives. Holding the branch in ID would hold the
+comparison too, and then we would never resolve anything. This trips people up — a
+stall in Part II froze the whole front of the machine, and here we freeze exactly one
+stage.
+
+The two dashed cells in the IF row are cycles where the machine does nothing. Look at
+the cost: two bubbles, and the loop's `ld` enters IF in cycle 4. That is exactly what
+the mispredicted branch cost on the previous slide.
+
+So say the uncomfortable thing plainly: **stalling and guessing wrong cost the same
+two cycles.** A machine that waits is a machine that has guessed wrong on every
+single branch, forever, by refusing to guess. That is why nobody builds it, and why
+"just stall until you know" — which is the correct answer for a data hazard — is the
+wrong answer here.
+
+The last fragment is the argument that matters, and it is worth making them check it.
+Predicting "not taken" costs 2 cycles on the fraction of branches that are taken, and
+0 on the rest. Waiting costs 2 on all of them. So prediction is never worse and
+usually better, even with the stupidest possible predictor. Every real machine
+predicts for this reason, not because prediction is clever.
+
+Ask: what fraction of branches in this loop are taken? (All but the last iteration of
+the loop.) So "not taken" is a bad predictor here — which sets up the next slide.
+:::
+
+## Guess, and Be Right About Loops {.smaller}
+
+The cheapest predictor is a rule with no state in it:
+
+| The branch goes | Predict | Because |
+|---|---|---|
+| **backward** (target behind the PC) | **taken** | it is a loop, and loops repeat |
+| **forward** (target ahead of the PC) | **not taken** | it is an `if`, and the `if` body is usually skipped |
+
+The sign of the offset is in the instruction word we just fetched, so the fetch stage
+can apply this rule without decoding anything, and the target is `PC + imm` —
+also in that word.
+
+::: {.fragment}
+The loop now runs at 3 cycles per iteration: **CPI 1.00**, with one miss per
+execution of the loop, on the iteration that falls out.
+:::
+
+::: {.fragment}
+But the accuracy is **fixed**. A forward branch that is taken nine times in ten is
+predicted wrong ten times in ten. The rule cannot learn, and it cannot tell one loop
+from another.
+:::
+
+::: {.fragment}
+This is the one program where the free rule looks as good as an expensive one:
+backward-taken is right about loops *by construction*. It has no way to be wrong
+about our loop, and no way to be right about the branches it was not designed for.
+:::
+
+::: {.notes}
+This is called *backward-taken, forward-not-taken*, and it is worth being precise
+about why it works: it is not a model of the program, it is a bet about how compilers
+lay out code. Loops are compiled with the body first and the exit branch at the
+bottom, jumping backwards. `if` bodies are compiled as a forward skip over the body.
+So "backwards means loop" is true because of a convention in how code is emitted, not
+because of anything in the ISA.
+
+The point about cost is the one students underrate. This predictor has no table, no
+state, no history. It is an adder and a sign bit, both of which the fetch stage
+already needs to compute `PC + 4` and `PC + immediate`. It is essentially free
+silicon, and it turns a loop that was paying 2 cycles per iteration into one paying
+zero.
+
+The loop arithmetic: three instructions, three cycles, CPI 1.00. The one miss is the
+final iteration, where the branch is not taken and we predicted taken — 2 cycles once
+per execution of the loop, not once per iteration.
+
+Then the limitation, which is the reason the next slide exists. This rule is a
+constant function of the branch's address. It never changes its mind. Any branch whose
+behaviour is the opposite of the convention is mispredicted 100% of the time, forever,
+no matter how predictable it actually is. A `for` loop whose condition is a forward
+branch, a loop that runs once, a short `if` whose body is almost always taken — the
+static rule gets all of them wrong every time.
+
+What we want is a predictor that *notices*. That needs memory, and memory indexed by
+something that identifies the branch.
+:::
+
+## The Predictor in the Fetch Stage {.smaller}
+
+![](figs/fig-predict.svg){height=310px}
+
+- **BHT** — direction. 8 or 16 Kb, GSHARE, one branch per cycle.
+- **BTB** — target. 16 entries, fully associative, indexed by part of the PC.
+- **RAS** — return addresses. 4 levels of nesting; `jal` and `jalr` push, `jalr` pops.
+
+::: {.fragment}
+Every table is indexed by **PC**, so the answer arrives before the instruction is
+decoded. That is why a correct prediction costs *zero* cycles and not one: IF is not
+waiting for ID to tell it where to go.
+:::
+
+::: {.fragment}
+**GSHARE** — index the table with PC bits XOR'd against a shift register of recent
+branch outcomes. The table then learns *patterns* per branch, not just a per-branch
+bias.
+:::
+
+::: {.notes}
+This is the dashed box from Part 0, finally opened. It has been sitting on the
+five-station figure since the second slide of the deck, and now we can say what is in
+it.
+
+Three tables, three jobs, and they are separate for a good reason. The BHT answers
+*which way*. The BTB answers *where to*. The RAS answers *where to, for a return*,
+because a return's target is not in the instruction at all — it is wherever the call
+came from, which is a stack, not an offset. That is why `jalr` cannot be predicted by
+a BTB and needs its own structure.
+
+The load-bearing sentence is the first fragment. A static predictor has to compute
+`PC + immediate`, which is fine, but a table indexed by the PC is looked up in the
+same cycle as the fetch, using an address we already have. So on a hit, IF knows the
+next address at the end of cycle 1 and fetches it in cycle 2 — the same cycle it would
+have fetched `PC + 4`. Zero penalty. If the predictor needed the decoded instruction,
+it would answer a cycle late and every correctly-predicted branch would cost one
+cycle, which would defeat the purpose.
+
+The manual's own words for the BTB are that on a hit "the redirect can be issued
+immediately, with no additional jump penalty" (§7.1.3). That is the design goal
+stated plainly.
+
+GSHARE, briefly: a plain BHT indexed by PC learns one bias per branch, which handles
+"this branch is usually taken". GSHARE XORs in a global history register — a shift
+register of the last N branch outcomes — so the index depends on *what happened
+recently* as well as *which branch this is*. Two branches at the same PC that behave
+differently depending on an earlier test then get different table entries. It is
+cheap and it is a real accuracy win, which is why it is in a small embedded core and
+not just in a big one.
+
+Be honest about the limits, because they are what Part V is about. Sixteen BTB
+entries is small — a program with more than sixteen hot branches will miss, and a BTB
+miss means IF does not know the target even when the BHT says taken. Four levels of
+RAS means recursion deeper than four mispredicts every return. These are the numbers
+you trade when you build a small core.
+:::
+
+## One Cycle {.smaller}
+
+The penalty is the number of instructions fetched between the branch and its check.
+So the only way to shrink it is to check earlier.
+
+| Branch checked in | Wrong instructions in flight | Penalty | What it costs to build |
+|---|---|---|---|
+| **EX** — the ALU compares | 2 | 2 cycles | nothing; this is our machine |
+| **ID** — a comparator, and an adder for the target | 1 | 1 cycle | hardware in a stage that had neither |
+| **IF** — before decode | 0 | — | only possible as a *guess*, which is the BHT |
+
+::: {.fragment}
+> **BJU 单周期内完成分支预测错误处理**
+>
+> The branch unit completes mispredict handling in one cycle. — C906 manual, §2.2.3
+
+**One cycle, not two.** The loop runs 3 + 1 = 4 cycles per iteration: **CPI 1.33**,
+against 1.67 for a machine that checks in EX.
+:::
+
+::: {.fragment}
+That is not what a textbook five-stage machine does, and it is not free: a
+comparator and a target adder that ID did not have, plus a flush that is one cycle
+wide. It is a deliberate purchase of CPI with silicon — the same trade as bypassing,
+spent on a different hazard.
+:::
+
+::: {.notes}
+The table is the whole argument, and it is a *derivation* rather than a claim: the
+penalty is a count of instructions in flight, so the only lever is where the check
+happens. Everything else on this slide follows from that one row at a time.
+
+Row 1 is our machine, and it is our machine for a specific reason: Part I's datapath
+has a register file and an immediate in ID, and no comparison logic at all. The first
+comparator in the design is the ALU. Adding one to ID is a real change to the
+datapath, not a wiring tweak, which is why the textbook version does not do it.
+
+Now the quote, and be careful with it. The manual says the BJU completes *mispredict
+handling* in one cycle. It does not say where the branch is checked, and it does not
+give a cycle diagram — it is a datasheet, and this is a claim about an implementation
+we cannot see. What we *can* say is what a one-cycle recovery implies: the check
+completes early enough that only one instruction was ever fetched on the wrong path,
+which is row 2. So either there is comparison logic in the decode unit, or the flush
+and the redirect overlap so that the recovery itself costs no extra cycle. Both are
+plausible for a core that also puts a PC-indexed BTB in front of the fetch stage; the
+manual does not distinguish them.
+
+Say that honestly rather than presenting 1 as something we derived. The interesting
+content is not the number — it is that the number is *possible*, and what it costs,
+and that most five-stage machines do not bother.
+
+The arithmetic: three instructions plus one cycle of penalty is four cycles per
+iteration, CPI 1.33, against 1.67 for a machine that pays two. On a loop-heavy
+program that is roughly a 20% difference in runtime, bought with a comparator, an
+adder, and a flush path. That is a real design decision and it is exactly the kind of
+thing the manual is advertising when it calls the BJU a performance feature.
+
+Note the symmetry with Part II: there, forwarding bought CPI with wires and muxes.
+Here, an early check buys CPI with a comparator and an adder. Same trade, different
+hazard. That is the recurring shape of the whole deck.
+:::
+
+## What We Bought {.smaller}
+
+| | **Stall** | **Static predict** | **Dynamic predict** | **The C906** |
+|---|---|---|---|---|
+| Paid in | cycles | nothing | a BHT, a BTB, a RAS | all three,<br>plus a comparator |
+| Wrong when | never | often | sometimes | sometimes |
+| Cost per branch | 2, every time | 2 when wrong | 2 when wrong | **1** when wrong |
+| Our loop | 5 cycles · CPI 1.67 | 3 · 1.00 | 3 · 1.00 | 4 · 1.33 |
+
+::: {.fragment}
+> **The ISA fix we did not take.** The 1990s answer was the **branch delay slot**: the
+> instruction after a branch executes unconditionally, and the compiler fills it. Same
+> trap as the load delay slot in Part II, for the same reason — an ISA outlives every
+> pipeline built to run it. RISC-V has neither.
+:::
+
+::: {.fragment}
+A branch is an instruction that changes the PC **on purpose**. Part IV is about the
+ones that change it without asking — and about the guarantee the machine owes when it
+cancels an instruction: that the cancelled instruction never happened.
+:::
+
+::: {.notes}
+The ledger, in the same shape as Part II's, with one column added because this part
+has one more answer.
+
+Read the last row as the summary of the part: 5, 3, 3, 4. Waiting is the worst option
+and it is the one that is always correct — which is the counter-intuitive thing about
+control hazards, and the reason this part needed its own slides rather than being a
+footnote to Part II.
+
+The static and dynamic columns are both 3 on *this* loop, and that is honest but
+misleading, so say why: backward-taken is right about loops by construction, so our
+example is the one program where the free rule looks as good as the expensive one.
+The difference shows up on the branches the rule gets wrong — a forward branch that is
+usually taken, a loop that runs once. There, static pays 2 every time and dynamic pays
+it once. Give them that as the reason to spend the silicon, not the number in the
+table.
+
+The delay slot gets one row and no slide, because Part II already told the story. The
+callback is the point: the same mistake was available for loads and for branches, it
+was made for both in MIPS and SPARC, and RISC-V declined both times. If a student
+remembers one design lesson from this deck, this is a good candidate — the ISA is a
+contract with everything that will ever run on the machine, and a pipeline detail
+leaks into it permanently.
+
+Bridge to Part IV: a branch is an instruction that changes the PC *on purpose*, and
+everything in this part was about predicting it. The next part is about the PC changes
+nobody asked for — a page fault, a misaligned access, an interrupt arriving between
+two instructions — where the machine has to be sure that the instruction it is
+cancelling never happened.
+:::
