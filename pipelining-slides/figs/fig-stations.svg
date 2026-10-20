@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1140" height="442" viewBox="0 0 1140 442">
+<defs><marker id="arw_1a4f8b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a4f8b"/></marker><marker id="arw_c2410c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/></marker><marker id="arw_7ea2c8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7ea2c8"/></marker><marker id="arw_6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker><marker id="arw_12365f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#12365f"/></marker></defs>
+<rect width="1140" height="442" fill="#ffffff"/>
+<text x="24.0" y="34.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="21" fill="#12365f" font-weight="700">Five stations, and the memory they talk to</text>
+<rect x="100.0" y="196.0" width="168.0" height="100.0" rx="6" fill="#e8eef7" stroke="#1a4f8b" stroke-width="2.4" opacity="1.0"/>
+<text x="184.0" y="230.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#12365f" font-weight="700">IF</text>
+<text x="184.0" y="254.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#c2410c" font-weight="700">IFU</text>
+<text x="184.0" y="276.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">fetch</text>
+<rect x="298.0" y="196.0" width="168.0" height="100.0" rx="6" fill="#e8eef7" stroke="#1a4f8b" stroke-width="2.4" opacity="1.0"/>
+<text x="382.0" y="230.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#12365f" font-weight="700">ID</text>
+<text x="382.0" y="254.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#c2410c" font-weight="700">IDU</text>
+<text x="382.0" y="276.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">decode, read regs</text>
+<rect x="496.0" y="196.0" width="168.0" height="100.0" rx="6" fill="#e8eef7" stroke="#1a4f8b" stroke-width="2.4" opacity="1.0"/>
+<text x="580.0" y="230.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#12365f" font-weight="700">EX</text>
+<text x="580.0" y="254.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#c2410c" font-weight="700">IU</text>
+<text x="580.0" y="276.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">execute</text>
+<rect x="694.0" y="196.0" width="168.0" height="100.0" rx="6" fill="#e8eef7" stroke="#1a4f8b" stroke-width="2.4" opacity="1.0"/>
+<text x="778.0" y="230.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#12365f" font-weight="700">MEM</text>
+<text x="778.0" y="254.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#c2410c" font-weight="700">LSU</text>
+<text x="778.0" y="276.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">load / store</text>
+<rect x="892.0" y="196.0" width="168.0" height="100.0" rx="6" fill="#e8eef7" stroke="#1a4f8b" stroke-width="2.4" opacity="1.0"/>
+<text x="976.0" y="230.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#12365f" font-weight="700">WB</text>
+<text x="976.0" y="254.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#c2410c" font-weight="700">RTU</text>
+<text x="976.0" y="276.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">write back</text>
+<rect x="20.0" y="220.0" width="64.0" height="52.0" rx="4" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<text x="52.0" y="252.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" fill="#12365f" font-weight="700">PC</text>
+<line x1="84.0" y1="246.0" x2="100.0" y2="246.0" stroke="#1a4f8b" stroke-width="2" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<rect x="100.0" y="70.0" width="168.0" height="60.0" rx="4" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<text x="184.0" y="96.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" fill="#12365f" font-weight="700">L1 I-cache</text>
+<text x="184.0" y="116.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#6b7280" font-style="italic">32 KB, 2-way</text>
+<line x1="184.0" y1="130.0" x2="184.0" y2="196.0" stroke="#1a4f8b" stroke-width="2" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<rect x="694.0" y="70.0" width="168.0" height="60.0" rx="4" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<text x="778.0" y="96.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" fill="#12365f" font-weight="700">L1 D-cache</text>
+<text x="778.0" y="116.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#6b7280" font-style="italic">64 KB, 4-way</text>
+<line x1="778.0" y1="130.0" x2="778.0" y2="196.0" stroke="#1a4f8b" stroke-width="2" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<rect x="340.0" y="70.0" width="300.0" height="60.0" rx="4" fill="#ffffff" stroke="#6b7280" stroke-width="1.8" stroke-dasharray="7,5" opacity="1.0"/>
+<text x="490.0" y="94.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#6b7280" font-weight="700">branch predictor</text>
+<text x="490.0" y="114.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" fill="#6b7280" font-style="italic">Gshare BHT · 16-entry BTB · 4-deep RAS</text>
+<path d="M370,130 L370,160 L248,160 L248,196" fill="none" stroke="#6b7280" stroke-width="1.6" stroke-dasharray="7,5" marker-end="url(#arw_6b7280)" opacity="1.0"/>
+<rect x="300.0" y="348.0" width="360.0" height="72.0" rx="6" fill="#ffffff" stroke="#1a4f8b" stroke-width="2.2" opacity="1.0"/>
+<text x="480.0" y="378.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" fill="#12365f" font-weight="700">Register file</text>
+<text x="480.0" y="400.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#6b7280" font-style="italic">32 × 64-bit, two read ports</text>
+<line x1="382.0" y1="348.0" x2="382.0" y2="296.0" stroke="#1a4f8b" stroke-width="2" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<text x="390.0" y="318.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#6b7280" font-style="italic">read</text>
+<path d="M976.0,296 L976.0,384 L660,384" fill="none" stroke="#1a4f8b" stroke-width="2" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<text x="984.0" y="378.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#6b7280" font-style="italic">write</text>
+</svg>
