@@ -6,18 +6,22 @@
 <text x="184.0" y="230.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#12365f" font-weight="700">IF</text>
 <text x="184.0" y="254.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#c2410c" font-weight="700">IFU</text>
 <text x="184.0" y="276.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">fetch</text>
+<line x1="271.0" y1="246.0" x2="297.0" y2="246.0" stroke="#1a4f8b" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
 <rect x="298.0" y="196.0" width="168.0" height="100.0" rx="6" fill="#e8eef7" stroke="#1a4f8b" stroke-width="2.4" opacity="1.0"/>
 <text x="382.0" y="230.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#12365f" font-weight="700">ID</text>
 <text x="382.0" y="254.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#c2410c" font-weight="700">IDU</text>
 <text x="382.0" y="276.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">decode, read regs</text>
+<line x1="469.0" y1="246.0" x2="495.0" y2="246.0" stroke="#1a4f8b" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
 <rect x="496.0" y="196.0" width="168.0" height="100.0" rx="6" fill="#e8eef7" stroke="#1a4f8b" stroke-width="2.4" opacity="1.0"/>
 <text x="580.0" y="230.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#12365f" font-weight="700">EX</text>
 <text x="580.0" y="254.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#c2410c" font-weight="700">IU</text>
 <text x="580.0" y="276.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">execute</text>
+<line x1="667.0" y1="246.0" x2="693.0" y2="246.0" stroke="#1a4f8b" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
 <rect x="694.0" y="196.0" width="168.0" height="100.0" rx="6" fill="#e8eef7" stroke="#1a4f8b" stroke-width="2.4" opacity="1.0"/>
 <text x="778.0" y="230.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#12365f" font-weight="700">MEM</text>
 <text x="778.0" y="254.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#c2410c" font-weight="700">LSU</text>
 <text x="778.0" y="276.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">load / store</text>
+<line x1="865.0" y1="246.0" x2="891.0" y2="246.0" stroke="#1a4f8b" stroke-width="2.2" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
 <rect x="892.0" y="196.0" width="168.0" height="100.0" rx="6" fill="#e8eef7" stroke="#1a4f8b" stroke-width="2.4" opacity="1.0"/>
 <text x="976.0" y="230.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#12365f" font-weight="700">WB</text>
 <text x="976.0" y="254.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#c2410c" font-weight="700">RTU</text>

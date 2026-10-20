@@ -129,6 +129,11 @@ same datapath. Pipelining did not add a functional unit or a memory; it added
 registers. Everything else on this slide is arithmetic about what those registers
 buy.
 
+Point at the four arrows between the stations on the previous slide: those arrows
+*are* the cuts. Every mechanism in the rest of the deck — the pipeline registers,
+the stall, the bypass, the flush — is drawn at one of those four arrows, so it is
+worth making them the landmark now.
+
 Start with the honest version of the win. If the five stages were exactly equal,
 the clock would fall by 5×. They are not equal, and the pipeline registers are not
 free: each one costs setup, hold, and clock-to-output, and the clock has to cover

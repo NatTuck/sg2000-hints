@@ -88,6 +88,10 @@ def fig_stations():
         b.append(txt(x + bw / 2, by + 34, lab, 19, "middle", DARK, bold=True))
         b.append(txt(x + bw / 2, by + 58, unit, 13, "middle", ACCENT, bold=True))
         b.append(txt(x + bw / 2, by + 80, verb, 12, "middle", GRAY, italic=True))
+        # the arrow is where a pipeline register will go
+        if i < len(stations) - 1:
+            b.append(line(x + bw + 3, by + bh / 2, x + bw + gap - 1, by + bh / 2,
+                          INK, 2.2, arrow=True))
 
     # PC
     b.append(rect(20, by + 24, 64, 52, "#ffffff", INK, 2, rx=4))
