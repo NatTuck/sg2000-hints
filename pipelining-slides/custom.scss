@@ -21,7 +21,8 @@ $code-block-font-size: 0.78em;
 }
 
 /* Wide comparison tables stay legible and on one line */
-.reveal .tbl-tight table {
+.reveal .tbl-tight table,
+.reveal table.tbl-tight {
   table-layout: fixed;
   width: 100%;
   font-size: 0.72em;
@@ -83,6 +84,13 @@ $code-block-font-size: 0.78em;
 .reveal table.pipe-tbl td.frozen {
   border-left: 2px dashed #c2410c;
   border-right: 2px dashed #c2410c;
+}
+
+/* an annulled instruction: it was fetched, then killed before it could commit */
+.reveal table.pipe-tbl td.killed {
+  background: #fbe4e4;
+  color: #b91c1c;
+  text-decoration: line-through;
 }
 
 /* monospace signal names in tables should not look like links */

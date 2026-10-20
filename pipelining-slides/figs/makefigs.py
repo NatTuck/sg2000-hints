@@ -397,3 +397,107 @@ fig_regs()
 fig_overlap()
 fig_hazard()
 fig_value()
+
+
+# =====================================================================
+# FIG 8 — two candidate next PCs, and a select that is not ready
+# =====================================================================
+def fig_nextpc():
+    W, H = 1140, 320
+    b = [txt(24, 30, "Two candidate next PCs, and a select that is not ready",
+             21, "start", DARK, bold=True)]
+
+    b.append(rect(30, 118, 76, 54, LIGHT, INK, 2.2, rx=4))
+    b.append(txt(68, 150, "PC", 16, "middle", DARK, bold=True))
+
+    # the split: PC feeds both adders
+    b.append(line(106, 145, 150, 145, INK, 2))
+    b.append(line(150, 90, 150, 200, INK, 2))
+    b.append(line(150, 90, 186, 90, INK, 2, arrow=True))
+    b.append(line(150, 200, 186, 200, INK, 2, arrow=True))
+
+    b.append(rect(186, 68, 96, 44, "#ffffff", INK, 2, rx=4))
+    b.append(txt(234, 95, "PC + 4", 14, "middle", DARK, bold=True))
+    b.append(rect(186, 178, 96, 44, "#ffffff", INK, 2, rx=4))
+    b.append(txt(234, 205, "PC + imm", 14, "middle", DARK, bold=True))
+
+    b.append(line(282, 90, 340, 90, INK, 2, arrow=True))
+    b.append(line(282, 200, 340, 200, INK, 2, arrow=True))
+    b.append(rect(340, 72, 86, 146, LIGHT, INK, 2.2, rx=4))
+    b.append(txt(383, 141, "MUX", 13, "middle", DARK, bold=True))
+    b.append(txt(383, 158, "2:1", 11, "middle", ACCENT, bold=True))
+
+    b.append(line(426, 145, 518, 145, INK, 2, arrow=True))
+    b.append(rect(520, 118, 96, 54, LIGHT, INK, 2.2, rx=4))
+    b.append(txt(568, 142, "IF", 15, "middle", DARK, bold=True))
+    b.append(txt(568, 160, "fetch", 11, "middle", GRAY, italic=True))
+
+    # the feedback loop: the chosen address becomes the next PC
+    b.append(path("M616,145 L700,145 L700,52 L68,52 L68,116", "none", INK, 2, arrow=True))
+
+    # the select arrives two cycles too late
+    b.append(line(383, 288, 383, 220, ACCENT, 2, dash="6,5", arrow=True))
+    b.append(txt(396, 246, "taken?", 13.5, "start", ACCENT, bold=True))
+    b.append(txt(396, 266, "the ALU decides at the end of EX", 12, "start", ACCENT, italic=True))
+    b.append(txt(396, 286, "IF needed it in cycle 1", 12, "start", GRAY, italic=True))
+
+    save("fig-nextpc.svg", W, H, b)
+
+
+# =====================================================================
+# FIG 9 — the predictor sits in the fetch stage, ahead of decode
+# =====================================================================
+def fig_predict():
+    W, H = 1140, 400
+    b = [txt(24, 30, "Prediction happens in the fetch stage, before decode",
+             21, "start", DARK, bold=True)]
+
+    b.append(rect(30, 170, 76, 54, LIGHT, INK, 2.2, rx=4))
+    b.append(txt(68, 202, "PC", 16, "middle", DARK, bold=True))
+
+    # PC indexes all three tables
+    b.append(line(106, 197, 130, 197, INK, 2))
+    b.append(line(130, 80, 130, 318, INK, 2))
+    for y in (80, 153, 239, 318):
+        b.append(line(130, y, 150, y, INK, 1.8, arrow=True))
+
+    # the +4 adder
+    b.append(rect(150, 58, 240, 44, "#ffffff", INK, 2, rx=4))
+    b.append(txt(270, 86, "PC + 4", 14, "middle", DARK, bold=True))
+
+    def box(y, h, title, l1, l2=""):
+        b.append(rect(150, y, 240, h, "#ffffff", INK, 2, rx=4))
+        b.append(txt(270, y + 22, title, 13, "middle", DARK, bold=True))
+        b.append(txt(270, y + 40, l1, 11.5, "middle", GRAY))
+        if l2:
+            b.append(txt(270, y + 56, l2, 11.5, "middle", GRAY))
+
+    box(118, 70, "BHT \u00b7 direction", "8 / 16 Kb, Gshare", "one branch per cycle")
+    box(204, 70, "BTB \u00b7 target", "16 entries, fully associative", "hit: no extra penalty")
+    box(290, 56, "RAS \u00b7 returns", "4 levels of nesting")
+
+    for y in (80, 239, 318):
+        b.append(line(390, y, 450, y, INK, 2, arrow=True))
+
+    b.append(rect(450, 58, 86, 292, LIGHT, INK, 2.2, rx=4))
+    b.append(txt(493, 198, "MUX", 13, "middle", DARK, bold=True))
+    b.append(txt(493, 215, "3:1", 11, "middle", ACCENT, bold=True))
+
+    b.append(line(536, 204, 618, 204, INK, 2, arrow=True))
+    b.append(rect(620, 177, 96, 54, LIGHT, INK, 2.2, rx=4))
+    b.append(txt(668, 201, "IF", 15, "middle", DARK, bold=True))
+    b.append(txt(668, 219, "fetch", 11, "middle", GRAY, italic=True))
+
+    b.append(path("M716,204 L790,204 L790,44 L68,44 L68,168", "none", INK, 2, arrow=True))
+
+    b.append(line(493, 384, 493, 352, ACCENT, 2, dash="6,5", arrow=True))
+    b.append(txt(506, 378, "BHT says taken?", 12.5, "start", ACCENT, bold=True))
+
+    b.append(txt(24, 392, "indexed by PC, so the answer arrives before the instruction is decoded",
+                 12, "start", GRAY, italic=True))
+
+    save("fig-predict.svg", W, H, b)
+
+
+fig_nextpc()
+fig_predict()
