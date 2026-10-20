@@ -55,55 +55,6 @@ C906's manual rather than in a teaching ISA.
 
 # Part 0 — Framing
 
-## One Instruction Per Clock {.smaller}
-
-The single-cycle machine finishes an instruction before it starts the next one, so
-every instruction pays for the whole datapath:
-
-$$t_{CLK} = t_{IF} + t_{RF} + t_{ALU} + t_{MEM} + t_{WB}$$
-
-Cut the datapath into five, put a register at each cut, and the clock only has to
-cover the slowest piece — the largest of the five, plus the register and skew
-overhead:
-
-$$t_{CLK} = \big(\text{slowest stage}\big) + t_{skew}$$
-
-<!-- NOTE: do not write \max(...) here. MathJax 2.7.9 under Quarto/reveal silently
-     truncates the expression at \max, leaving "t_CLK = max" on the slide. Verified
-     against a standalone MathJax page, where the same TeX renders correctly, so it
-     is this pipeline, not the TeX. Keep the operator out of the equations. -->
-
-| | Single cycle | Pipelined |
-|---|---|---|
-| Clock period | sum of five stages | **max** of five stages |
-| CPI | 1 | ≈ 1 |
-| Instructions in flight | 1 | 5 |
-| Speed | 1× | **≈ 4×** |
-
-**It does not make an instruction faster. It makes the machine faster**, by having
-five different instructions in it at once.
-
-::: {.notes}
-Start with the honest version of the win. If the five stages were exactly equal,
-the clock would fall by 5×. They are not equal, and the pipeline registers are not
-free: each one costs setup, hold, and clock-to-output, and the clock has to cover
-the *slowest* stage plus skew. A real five-stage in-order core gets roughly 4×,
-not 5×. Say "about 4×" and mean it.
-
-Note what has *not* changed: the same datapath, the same instruction set, the same
-number of instructions executed. Pipelining is not an optimisation of the program.
-It is a change in how the machine spends its time.
-
-Foreshadow the cost, without spoiling it: the reason this is not a twenty-minute
-lecture is that instructions are no longer alone in the machine. When one
-instruction needs a value that another instruction has not finished computing yet,
-something has to give. That is Part II.
-
-The laundry analogy is fine if you keep it short: one washer, one dryer, one
-folder, and five loads. You do not finish load 1 five times faster; you finish
-five loads in the time of one plus the pipeline depth.
-:::
-
 ## The Machine in the Chip {.smaller}
 
 ![](figs/fig-stations.svg){height=430px}
@@ -139,6 +90,63 @@ not the cache sizes.
 
 The dashed branch predictor is there to be pointed at and postponed: "that box is
 the answer to Part III, and we will not open it yet."
+:::
+
+## One Instruction Per Clock {.smaller}
+
+The datapath you just saw is *the* datapath. The only question is whether there is
+a register between the stations.
+
+With no registers we have the **single-cycle** machine: one clock has to cover all
+five stations, so every instruction pays for the whole datapath.
+
+$$t_{CLK} = t_{IF} + t_{RF} + t_{ALU} + t_{MEM} + t_{WB}$$
+
+Put a register at each cut and it becomes the **pipelined** machine: the clock only
+has to cover the slowest piece — the largest of the five, plus the register and
+skew overhead.
+
+$$t_{CLK} = \big(\text{slowest stage}\big) + t_{skew}$$
+
+<!-- NOTE: do not write \max(...) here. MathJax 2.7.9 under Quarto/reveal silently
+     truncates the expression at \max, leaving "t_CLK = max" on the slide. Verified
+     against a standalone MathJax page, where the same TeX renders correctly, so it
+     is this pipeline, not the TeX. Keep the operator out of the equations. -->
+
+| | Single cycle | Pipelined |
+|---|---|---|
+| Clock period | sum of five stages | **slowest** of five stages |
+| CPI | 1 | ≈ 1 |
+| Instructions in flight | 1 | 5 |
+| Speed | 1× | **≈ 4×** |
+
+**It does not make an instruction faster. It makes the machine faster**, by having
+five different instructions in it at once.
+
+::: {.notes}
+The framing to give them, because they have just looked at the diagram: this is the
+same datapath. Pipelining did not add a functional unit or a memory; it added
+registers. Everything else on this slide is arithmetic about what those registers
+buy.
+
+Start with the honest version of the win. If the five stages were exactly equal,
+the clock would fall by 5×. They are not equal, and the pipeline registers are not
+free: each one costs setup, hold, and clock-to-output, and the clock has to cover
+the *slowest* stage plus skew. A real five-stage in-order core gets roughly 4×,
+not 5×. Say "about 4×" and mean it.
+
+Note what has *not* changed: the same datapath, the same instruction set, the same
+number of instructions executed. Pipelining is not an optimisation of the program.
+It is a change in how the machine spends its time.
+
+Foreshadow the cost, without spoiling it: the reason this is not a twenty-minute
+lecture is that instructions are no longer alone in the machine. When one
+instruction needs a value that another instruction has not finished computing yet,
+something has to give. That is Part II.
+
+The laundry analogy is fine if you keep it short: one washer, one dryer, one
+folder, and five loads. You do not finish load 1 five times faster; you finish
+five loads in the time of one plus the pipeline depth.
 :::
 
 ## What We Are Leaving Out {.smaller}
@@ -195,7 +203,8 @@ II–IV follows from that one sentence.
 
 ::: {.notes}
 `ld` is the example because it is the only common instruction that needs every
-station. Walk it left to right on the figure from the previous slide.
+station. Walk it left to right on the five-station figure from Part 0 — it is still
+the same machine, and this is the first slide where we look inside a station.
 
 The "all five stations" point is the one students get wrong on exams. An `add`
 does not skip MEM; it occupies MEM for a cycle and the station does nothing. The
