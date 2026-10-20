@@ -293,27 +293,80 @@ rest of the deck is the arithmetic of how much worse.
 Six instructions with six different destinations ran at one per clock. Change one
 register number.
 
-## One Register, Two Instructions {.smaller}
+## The Program {.smaller}
 
-![](figs/fig-hazard.svg){height=420px}
+```asm
+ld   x5, 8(x10)
+add  x6, x11, x12      # writes x6
+sub  x7, x6, x14       # reads  x6     <-- the one register changed
+and  x8, x15, x16
+or   x9, x17, x18
+xor  x19, x20, x21
+```
 
-`sub` reads `x5` in cycle 3. `add` does not write `x5` until the end of cycle 5.
+The six instructions from the last slide, with **one register changed**: `sub` used
+to read `x13`, and now takes its first source from `add`'s destination.
 
 ::: {.fragment}
-So `sub` reads whatever `x5` held *before* the `add`. The machine has not slowed
+The program is legal, and the machine will not complain.
+:::
+
+::: {.fragment}
+So: which cycle does `sub` read `x6`, and which cycle does `add` write it?
+:::
+
+::: {.notes}
+This slide exists because the pipeline table only ever shows *destinations*. Without
+the source operands on screen, "sub x7" and "add x6" look like they have nothing to
+do with each other, and the hazard on the next slide looks like magic. So: show the
+program, and mark the two operands that matter.
+
+The continuity is deliberate — this is the same six instructions as the last slide
+of Part I, not a new example. One token changed: `sub`'s first source, `x13` → `x6`.
+Everything else is identical, including the register numbers of every destination.
+That is the point of the divider's line: the machine did not change, the program
+barely changed.
+
+Two facts to get them to say out loud:
+
+- `add x6, x11, x12` **writes** `x6`.
+- `sub x7, x6, x14` **reads** `x6`.
+
+Nothing else in the program touches `x6`. So there is exactly one dependency here,
+and it is between two *adjacent* instructions — which is the most common case in
+real code and the one the hardware has to make fast.
+
+Worth asking before you move on, because it is the active-learning moment of the
+part: "which cycle does `sub` read `x6` in? Which cycle does `add` write it in?"
+They can answer both from the table they saw two slides ago, and the next slide
+confirms it. Do not answer it for them.
+
+And say the legal point plainly: the ISA specifies what the program means, not when
+each step happens. This program has one obvious meaning, and the hardware is
+required to produce it. Nothing in the encoding says "wait for the `add`".
+:::
+
+## One Register, Two Instructions {.smaller}
+
+![](figs/fig-hazard.svg){height=380px}
+
+`sub` reads `x6` in cycle 4. `add` does not write `x6` until the end of cycle 6.
+
+::: {.fragment}
+So `sub` reads whatever `x6` held *before* the `add`. The machine has not slowed
 down — it has computed the wrong answer, at full speed.
 :::
 
 ::: {.notes}
-Put the two tables side by side in your head: the six instructions from the last
-slide, and these five. One register number changed. `sub` now takes its first
-source from `add`'s destination.
+Put the two tables side by side in your head: the six instructions from Part I, and
+these six. One source register changed. `sub` now takes its first source from
+`add`'s destination.
 
 Walk the arithmetic on the table, because this is the moment students either get
 it or spend the rest of the term guessing:
 
-- `add` is IF 1, ID 2, EX 3, MEM 4, WB 5. It writes `x5` at the **end** of cycle 5.
-- `sub` is IF 2, ID 3, EX 4. It reads `x5` in **cycle 3**.
+- `add` is IF 2, ID 3, EX 4, MEM 5, WB 6. It writes `x6` at the **end** of cycle 6.
+- `sub` is IF 3, ID 4, EX 5. It reads `x6` in **cycle 4**.
 
 Now the sentence to land: `sub`'s read and `add`'s execute are in the *same cycle*.
 The value is being computed at the same moment it is being read. The register file
@@ -323,11 +376,11 @@ the `add` ever ran.
 Two things worth saying explicitly:
 
 1. Nothing goes wrong in any visible sense. No trap, no error, no slow-down. The
-   machine happily computes the wrong answer at full speed. That is what makes
-   this a *hazard* rather than an exception: a hazard is a design problem, an
-   exception is an architectural event. Part IV is about the other one.
+   machine happily computes the wrong answer at full speed. That is what makes this
+   a *hazard* rather than an exception: a hazard is a design problem, an exception
+   is an architectural event. Part IV is about the other one.
 2. The hazard is created by the pipeline, not by the program or the ISA. The same
-   five instructions on the single-cycle machine are correct, because there the
+   six instructions on the single-cycle machine are correct, because there the
    write happens before the next read can start. Depth is what breaks it.
 
 If someone asks "why not just write the register file earlier?" — that is a good
@@ -355,9 +408,9 @@ Three ways to fix that, and every processor uses some combination:
 ::: {.notes}
 This is the reframing that makes the rest of Part II mechanical. The value is not
 lost and it is not late; it is *in the wrong place*. Follow it across the figure:
-the ALU produces it at the end of cycle 3, EX/MEM holds it during cycle 4, MEM/WB
-holds it during cycle 5, and only then does the register file have it. `sub` looked
-in cycle 3, when the register file still held the old one.
+the ALU produces it at the end of cycle 4, EX/MEM holds it during cycle 5, MEM/WB
+holds it during cycle 6, and only then does the register file have it. `sub` looked
+in cycle 4, when the register file still held the old one.
 
 So there are exactly three things you can do, and they are the three on the slide:
 

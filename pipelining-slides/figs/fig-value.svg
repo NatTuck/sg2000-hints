@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1140" height="396" viewBox="0 0 1140 396">
 <defs><marker id="arw_1a4f8b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a4f8b"/></marker><marker id="arw_c2410c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/></marker><marker id="arw_7ea2c8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7ea2c8"/></marker><marker id="arw_6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker><marker id="arw_12365f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#12365f"/></marker></defs>
 <rect width="1140" height="396" fill="#ffffff"/>
-<text x="24.0" y="34.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="21" fill="#12365f" font-weight="700">The new x5, cycle by cycle</text>
-<rect x="426.0" y="94.0" width="118.0" height="236.0" fill="#c2410c" opacity="0.07"/>
+<text x="24.0" y="34.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="21" fill="#12365f" font-weight="700">The new x6, cycle by cycle</text>
+<rect x="544.0" y="94.0" width="118.0" height="236.0" fill="#c2410c" opacity="0.07"/>
 <line x1="190.0" y1="100.0" x2="190.0" y2="324.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
 <line x1="308.0" y1="100.0" x2="308.0" y2="324.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
 <line x1="426.0" y1="100.0" x2="426.0" y2="324.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
@@ -11,11 +11,12 @@
 <line x1="780.0" y1="100.0" x2="780.0" y2="324.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
 <line x1="898.0" y1="100.0" x2="898.0" y2="324.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
 <line x1="1016.0" y1="100.0" x2="1016.0" y2="324.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
-<line x1="190.0" y1="100.0" x2="1016.0" y2="100.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
-<line x1="190.0" y1="156.0" x2="1016.0" y2="156.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
-<line x1="190.0" y1="212.0" x2="1016.0" y2="212.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
-<line x1="190.0" y1="268.0" x2="1016.0" y2="268.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
-<line x1="190.0" y1="324.0" x2="1016.0" y2="324.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
+<line x1="1134.0" y1="100.0" x2="1134.0" y2="324.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
+<line x1="190.0" y1="100.0" x2="1134.0" y2="100.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
+<line x1="190.0" y1="156.0" x2="1134.0" y2="156.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
+<line x1="190.0" y1="212.0" x2="1134.0" y2="212.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
+<line x1="190.0" y1="268.0" x2="1134.0" y2="268.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
+<line x1="190.0" y1="324.0" x2="1134.0" y2="324.0" stroke="#d7dee8" stroke-width="1" stroke-linecap="round" opacity="1.0"/>
 <text x="249.0" y="86.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6b7280">1</text>
 <text x="367.0" y="86.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6b7280">2</text>
 <text x="485.0" y="86.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6b7280">3</text>
@@ -23,20 +24,21 @@
 <text x="721.0" y="86.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6b7280">5</text>
 <text x="839.0" y="86.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6b7280">6</text>
 <text x="957.0" y="86.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6b7280">7</text>
+<text x="1075.0" y="86.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6b7280">8</text>
 <text x="174.0" y="133.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#12365f" font-weight="700">ALU output</text>
 <text x="174.0" y="189.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#12365f" font-weight="700">EX/MEM</text>
 <text x="174.0" y="245.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#12365f" font-weight="700">MEM/WB</text>
 <text x="174.0" y="301.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#12365f" font-weight="700">register file</text>
-<rect x="429.0" y="103.0" width="112.0" height="50.0" rx="4" fill="#fdece4" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
-<text x="485.0" y="132.5" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#12365f">new x5</text>
-<rect x="547.0" y="159.0" width="112.0" height="50.0" rx="4" fill="#fdece4" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
-<text x="603.0" y="188.5" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#12365f">new x5</text>
-<rect x="665.0" y="215.0" width="112.0" height="50.0" rx="4" fill="#fdece4" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
-<text x="721.0" y="244.5" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#12365f">new x5</text>
-<rect x="783.0" y="271.0" width="112.0" height="50.0" rx="4" fill="#fdece4" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
-<text x="839.0" y="300.5" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#12365f">new x5</text>
+<rect x="547.0" y="103.0" width="112.0" height="50.0" rx="4" fill="#fdece4" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
+<text x="603.0" y="132.5" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#12365f">new x6</text>
+<rect x="665.0" y="159.0" width="112.0" height="50.0" rx="4" fill="#fdece4" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
+<text x="721.0" y="188.5" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#12365f">new x6</text>
+<rect x="783.0" y="215.0" width="112.0" height="50.0" rx="4" fill="#fdece4" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
+<text x="839.0" y="244.5" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#12365f">new x6</text>
 <rect x="901.0" y="271.0" width="112.0" height="50.0" rx="4" fill="#fdece4" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
-<text x="957.0" y="300.5" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#12365f">new x5</text>
-<text x="485.0" y="350.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#c2410c" font-weight="700">sub reads x5 here</text>
-<text x="485.0" y="370.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#6b7280" font-style="italic">the register file still holds the old value</text>
+<text x="957.0" y="300.5" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#12365f">new x6</text>
+<rect x="1019.0" y="271.0" width="112.0" height="50.0" rx="4" fill="#fdece4" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
+<text x="1075.0" y="300.5" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#12365f">new x6</text>
+<text x="603.0" y="350.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#c2410c" font-weight="700">sub reads x6 here</text>
+<text x="603.0" y="370.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#6b7280" font-style="italic">the register file still holds the old value</text>
 </svg>

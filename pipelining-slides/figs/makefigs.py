@@ -206,13 +206,13 @@ def fig_overlap():
 # FIG 4 — one register, two instructions
 # =====================================================================
 def fig_hazard():
-    W, H = 1160, 452
-    b = [txt(24, 34, "Five instructions, one shared register", 21, "start", DARK, bold=True)]
+    W, H = 1160, 412
+    b = [txt(24, 34, "Two accesses, two cycles apart", 21, "start", DARK, bold=True)]
 
-    insts = ["add x5", "sub x6", "and x7", "or x10", "xor x13"]
+    insts = ["ld x5", "add x6", "sub x7", "and x8", "or x9", "xor x19"]
     rows = ["IF", "ID", "EX", "MEM", "WB"]
-    x0, colw, y0, rowh = 150, 100, 112, 58
-    ncol = 9
+    x0, colw, y0, rowh = 150, 100, 76, 58
+    ncol = 10
 
     for c in range(ncol + 1):
         b.append(line(x0 + c * colw, y0, x0 + c * colw, y0 + 5 * rowh, "#d7dee8", 1))
@@ -233,17 +233,17 @@ def fig_hazard():
             b.append(rect(cx, cy, colw - 6, rowh - 6, PAL[i % len(PAL)], "#ffffff", 1, rx=4))
             b.append(txt(cx + (colw - 6) / 2, cy + (rowh - 6) / 2 + 4.5, inst, 12.5, "middle", DARK))
 
-    # the two cells that matter: sub reads x5 (instr 1, ID) and add writes x5 (instr 0, WB)
-    for i, k in ((1, 1), (0, 4)):
+    # the two cells that matter: sub reads x6 (instr 2, ID) and add writes x6 (instr 1, WB)
+    for i, k in ((2, 1), (1, 4)):
         cx = x0 + (i + k) * colw + 3
         cy = y0 + k * rowh + 3
         b.append(rect(cx, cy, colw - 6, rowh - 6, "none", ACCENT, 3, rx=4))
 
-    b.append(txt(x0 + 2.5 * colw, y0 - 34, "sub reads x5", 12.5, "middle", ACCENT, bold=True))
-    b.append(txt(x0 + 4.5 * colw, y0 - 34, "add writes x5", 12.5, "middle", ACCENT, bold=True))
+    b.append(txt(x0 + 3.5 * colw, y0 - 34, "sub reads x6", 12.5, "middle", ACCENT, bold=True))
+    b.append(txt(x0 + 5.5 * colw, y0 - 34, "add writes x6", 12.5, "middle", ACCENT, bold=True))
 
     yb = y0 + 5 * rowh + 24
-    xa, xb = x0 + 2.5 * colw, x0 + 4.5 * colw
+    xa, xb = x0 + 3.5 * colw, x0 + 5.5 * colw
     mid = (xa + xb) / 2
     b.append(line(mid, yb, xa + 3, yb, ACCENT, 2, arrow=True))
     b.append(line(mid, yb, xb - 3, yb, ACCENT, 2, arrow=True))
@@ -259,15 +259,15 @@ def fig_hazard():
 # =====================================================================
 def fig_value():
     W, H = 1140, 396
-    b = [txt(24, 34, "The new x5, cycle by cycle", 21, "start", DARK, bold=True)]
+    b = [txt(24, 34, "The new x6, cycle by cycle", 21, "start", DARK, bold=True)]
 
     lanes = ["ALU output", "EX/MEM", "MEM/WB", "register file"]
     x0, colw, y0, rowh = 190, 118, 100, 56
-    ncol = 7
-    fills = {0: [2], 1: [3], 2: [4], 3: [5, 6]}      # 0-based cycle indices
+    ncol = 8
+    fills = {0: [3], 1: [4], 2: [5], 3: [6, 7]}      # 0-based cycle indices
 
     # the cycle in which sub reads
-    band = x0 + 2 * colw
+    band = x0 + 3 * colw
     b.append(f'<rect x="{band:.1f}" y="{y0 - 6:.1f}" width="{colw:.1f}" '
              f'height="{4 * rowh + 12:.1f}" fill="{ACCENT}" opacity="0.07"/>')
 
@@ -285,11 +285,11 @@ def fig_value():
             cx = x0 + c * colw + 3
             cy = y0 + r * rowh + 3
             b.append(rect(cx, cy, colw - 6, rowh - 6, "#fdece4", ACCENT, 1.4, rx=4))
-            b.append(txt(cx + (colw - 6) / 2, cy + (rowh - 6) / 2 + 4.5, "new x5", 12, "middle", DARK))
+            b.append(txt(cx + (colw - 6) / 2, cy + (rowh - 6) / 2 + 4.5, "new x6", 12, "middle", DARK))
 
     # the read marker, below the grid
     yb = y0 + 4 * rowh
-    b.append(txt(band + colw / 2, yb + 26, "sub reads x5 here", 12.5, "middle", ACCENT, bold=True))
+    b.append(txt(band + colw / 2, yb + 26, "sub reads x6 here", 12.5, "middle", ACCENT, bold=True))
     b.append(txt(band + colw / 2, yb + 46, "the register file still holds the old value", 11.5,
                  "middle", GRAY, italic=True))
 
