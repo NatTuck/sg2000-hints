@@ -245,9 +245,12 @@ what the next station needs to know.
 This is the slide where the machine becomes understandable: we added four
 registers and nothing else. No new functional units, no new memories, no new ALU.
 
-Two things to draw out. First, the registers carry *control* as well as data —
-that is the next slide. Second, they carry `rd`, because WB has to know where to
-write and the instruction word itself is long gone by then.
+Two things to draw out. First, the registers carry *control* as well as data: the
+instruction is decoded once, in ID, and the control bits ride down inside ID/EX,
+EX/MEM and MEM/WB to the station that uses them. The alternative is five decoders
+and five copies of the opcode logic, so one decoder with five users is the design.
+Second, they carry `rd`, because WB has to know where to write and the instruction
+word itself is long gone by then.
 
 The state point is the setup for Part II. An instruction's result now lives in a
 pipeline register — EX/MEM, then MEM/WB — for two cycles before it reaches the
@@ -285,91 +288,99 @@ of those conditions, and every mechanism makes CPI worse than 1 + (k−1)/n. The
 rest of the deck is the arithmetic of how much worse.
 :::
 
-## Control Travels With the Instruction {.smaller}
+# Part II — Data Hazards
 
-In the single-cycle machine, control is a function of the instruction word sitting
-at the decoder. In the pipeline the word moves, so the control moves with it.
+Six instructions with six different destinations ran at one per clock. Change one
+register number.
 
-| Signal | Decided in | Used in |
-|---|---|---|
-| `RegWrite` | ID | WB |
-| `MemRead`, `MemWrite` | ID | MEM |
-| `MemToReg` | ID | WB |
-| `ALUSrc`, `ALUOp` | ID | EX |
-| `Branch`, `PCSrc` | ID | IF, next cycle |
+## One Register, Two Instructions {.smaller}
 
-Decode **once**, carry the bits down the pipeline in the ID/EX, EX/MEM and MEM/WB
-registers. The alternative is five decoders and five copies of the opcode logic.
+![](figs/fig-hazard.svg){height=420px}
+
+`sub` reads `x5` in cycle 3. `add` does not write `x5` until the end of cycle 5.
 
 ::: {.fragment}
-`PCSrc` is the odd one out. It is decided in ID, but it does not act on the
-instruction in ID — it changes what the *fetch* station does next. A control signal
-that reaches backwards in time is how a control hazard happens.
+So `sub` reads whatever `x5` held *before* the `add`. The machine has not slowed
+down — it has computed the wrong answer, at full speed.
 :::
 
 ::: {.notes}
-The single-cycle machine has one decoder and it produces signals that are used
-immediately. In the pipeline the instruction spends five cycles in the machine, so
-the signals have to survive the journey — hence the control bits in every pipeline
-register on the previous slide.
+Put the two tables side by side in your head: the six instructions from the last
+slide, and these five. One register number changed. `sub` now takes its first
+source from `add`'s destination.
 
-The design principle: one decoder, five users. Decode in ID, then the control
-travels. This is why 图 2.1 shows the IDU with arrows fanning out to everything:
-it is the one place where the instruction is interpreted.
+Walk the arithmetic on the table, because this is the moment students either get
+it or spend the rest of the term guessing:
 
-`PCSrc` is the odd one out, and flag it as such. It is decided in ID but it does
-not act on the instruction in ID — it acts on the *fetch* station, changing what
-gets fetched next. Control signals that reach backwards in time are exactly how
-control hazards happen. Part III.
+- `add` is IF 1, ID 2, EX 3, MEM 4, WB 5. It writes `x5` at the **end** of cycle 5.
+- `sub` is IF 2, ID 3, EX 4. It reads `x5` in **cycle 3**.
 
-If someone asks about `rd` versus `rs`: `rs1` and `rs2` are needed in ID (to read)
-and in EX (to compare against a forwarded value); `rd` is needed in WB. That is why
-both are carried.
+Now the sentence to land: `sub`'s read and `add`'s execute are in the *same cycle*.
+The value is being computed at the same moment it is being read. The register file
+is not where the answer is, so `sub` gets the previous value — the one from before
+the `add` ever ran.
+
+Two things worth saying explicitly:
+
+1. Nothing goes wrong in any visible sense. No trap, no error, no slow-down. The
+   machine happily computes the wrong answer at full speed. That is what makes
+   this a *hazard* rather than an exception: a hazard is a design problem, an
+   exception is an architectural event. Part IV is about the other one.
+2. The hazard is created by the pipeline, not by the program or the ISA. The same
+   five instructions on the single-cycle machine are correct, because there the
+   write happens before the next read can start. Depth is what breaks it.
+
+If someone asks "why not just write the register file earlier?" — that is a good
+question with a good answer. The value does not exist until the end of EX, and for
+a load it does not exist until the end of MEM. You cannot move the write earlier
+than the data. You have to move the *data* — which is the next slide.
 :::
 
-## The Pipeline Diagram {.smaller}
+## Where the Value Is {.smaller}
 
-<table class="pipe-tbl">
-<thead>
-<tr><th></th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th></tr>
-</thead>
-<tbody>
-<tr><td>IF</td><td class="c1">ld x5</td><td class="c2">add x6</td><td class="c3">sub x7</td><td class="c4">and x8</td><td class="c5">or x9</td><td class="c6">xor x19</td><td></td><td></td><td></td><td></td></tr>
-<tr><td>ID</td><td></td><td class="c1">ld x5</td><td class="c2">add x6</td><td class="c3">sub x7</td><td class="c4">and x8</td><td class="c5">or x9</td><td class="c6">xor x19</td><td></td><td></td><td></td></tr>
-<tr><td>EX</td><td></td><td></td><td class="c1">ld x5</td><td class="c2">add x6</td><td class="c3">sub x7</td><td class="c4">and x8</td><td class="c5">or x9</td><td class="c6">xor x19</td><td></td><td></td></tr>
-<tr><td>MEM</td><td></td><td></td><td></td><td class="c1">ld x5</td><td class="c2">add x6</td><td class="c3">sub x7</td><td class="c4">and x8</td><td class="c5">or x9</td><td class="c6">xor x19</td><td></td></tr>
-<tr><td>WB</td><td></td><td></td><td></td><td></td><td class="c1">ld x5</td><td class="c2">add x6</td><td class="c3">sub x7</td><td class="c4">and x8</td><td class="c5">or x9</td><td class="c6">xor x19</td></tr>
-</tbody>
-</table>
+![](figs/fig-value.svg){height=360px}
+
+The value is not missing. It is in a pipeline register, one station ahead of where
+`sub` is looking. **A result exists in the machine for two cycles before it exists
+in the register file.**
 
 ::: {.fragment}
-- **Read in ID, write at the end of WB.** `ld x5` reads `x10` in cycle 2 and writes
-  `x5` at the end of cycle 5.
-- An empty cell is a station doing nothing. A *hole* in a row is a **bubble** —
-  the instruction waited a cycle.
-- Every mechanism in Parts II–IV is drawn on one of these tables. The next one has
-  two instructions that share a register.
+Three ways to fix that, and every processor uses some combination:
+
+- **stall** — make `sub` wait until the value reaches the register file
+- **bypass** — hand `sub` the value from the pipeline register, as soon as it exists
+- **speculate** — guess the value, and check later
 :::
 
 ::: {.notes}
-This is the deck's working tool. Everything in Parts II–IV is drawn on a table
-shaped like this one, and the exam asks them to draw it.
+This is the reframing that makes the rest of Part II mechanical. The value is not
+lost and it is not late; it is *in the wrong place*. Follow it across the figure:
+the ALU produces it at the end of cycle 3, EX/MEM holds it during cycle 4, MEM/WB
+holds it during cycle 5, and only then does the register file have it. `sub` looked
+in cycle 3, when the register file still held the old one.
 
-How to read it: each row is a station, each column is a cycle, and each diagonal
-band is one instruction walking down the machine. Colours are per instruction and
-stay the same for the rest of the deck.
+So there are exactly three things you can do, and they are the three on the slide:
 
-Count CPI from it: cycles along the bottom row, divided by instructions. Here 10/6.
+- **Stall** — the value is where it needs to be eventually, so wait for it. Costs
+  cycles. Simple to reason about, expensive in CPI.
+- **Bypass** (also called forwarding) — the value exists in EX/MEM, so wire it
+  round to the ALU input and use it now. Costs wires and a mux; costs no cycles.
+- **Speculate** — guess what the value will be, keep going, and check when the real
+  one arrives. Costs nothing when the guess is right and a flush when it is wrong.
 
-The two rules to write on the board:
+Be honest that value speculation is rare in practice: it shows up for things like
+predictable load values, not as a general answer to data hazards. It is on the
+slide because it is the third member of the family, and because it is the *main*
+answer to control hazards in Part III — where the thing being guessed is the next
+PC, not a register value.
 
-1. The register file is read in ID and written at the end of WB. So `ld x5` reads
-   its source in cycle 2 and its destination becomes visible only at the end of
-   cycle 5 — three cycles later.
-2. An empty cell is a station idling, which is normal. A hole *in the middle of an
-   instruction's band* is a bubble, which is not normal: it means we made the
-   instruction wait, and it is what stalls and annulments look like.
+Then say what our core does, because it saves a slide later: the C906 forwards
+operands in the integer unit — the manual says single-cycle ALU instructions have
+no data-hazard stall — so the ALU-to-ALU case above is free. The case forwarding
+cannot fix is load-to-use, and that is where the stall comes back. Both mechanisms
+are in the core; neither is hypothetical.
 
-Next slide in Part II draws the same table with two instructions that share a
-register, and the table will show the problem before we say a word about it.
+Last framing for the part: every slide from here is one of these three, priced.
+Stall buys correctness with CPI, bypass buys it with silicon, speculation buys it
+with a gamble. There is no fourth option.
 :::
