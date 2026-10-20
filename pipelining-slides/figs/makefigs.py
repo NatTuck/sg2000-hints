@@ -501,3 +501,45 @@ def fig_predict():
 
 fig_nextpc()
 fig_predict()
+
+
+# =====================================================================
+# FIG 10 — a fault is noticed in one stage and acted on in another
+# =====================================================================
+def fig_trap():
+    W, H = 1140, 398
+    b = [txt(24, 30, "Four places to notice a fault, one place to act on it",
+             21, "start", DARK, bold=True)]
+
+    xs = [60, 240, 420, 600, 780]
+    bw, by, bh = 150, 170, 90
+    stages = ["IF", "ID", "EX", "MEM", "WB"]
+    faults = ["I-access fault", "illegal instruction", "misaligned address",
+              "page fault", None]
+
+    for x, s, f in zip(xs, stages, faults):
+        b.append(rect(x, by, bw, bh, LIGHT, INK, 2.2, rx=6))
+        b.append(txt(x + bw / 2, by + bh / 2 + 7, s, 18, "middle", DARK, bold=True))
+        if f:
+            cx = x + bw / 2
+            b.append(txt(cx, 92, f, 12.5, "middle", ACCENT, bold=True))
+            b.append(line(cx, 102, cx, by - 3, ACCENT, 1.8, dash="6,5", arrow=True))
+
+    # the fault is carried along the pipeline, not acted on
+    b.append(line(xs[0] + bw / 2, by + bh, xs[0] + bw / 2, 292, ACCENT, 2))
+    b.append(line(xs[0] + bw / 2, 292, xs[4] + bw / 2, 292, ACCENT, 2.4))
+    for x in xs[1:4]:
+        b.append(line(x + bw / 2, by + bh, x + bw / 2, 292, ACCENT, 2))
+    b.append(txt(430, 314, "the fault is carried, not acted on", 12.5, "middle",
+                 ACCENT, italic=True))
+
+    # ... and acted on once, at retire
+    b.append(line(xs[4] + bw / 2, 292, xs[4] + bw / 2, 326, ACCENT, 2.4, arrow=True))
+    b.append(rect(690, 330, 300, 54, "#fdeaea", ACCENT, 2.2, rx=6))
+    b.append(txt(840, 352, "trap, taken at retire", 13.5, "middle", ACCENT, bold=True))
+    b.append(txt(840, 371, "PC \u2190 mtvec \u00b7 mepc \u2190 this PC", 11.5, "middle", GRAY))
+
+    save("fig-trap.svg", W, H, b)
+
+
+fig_trap()

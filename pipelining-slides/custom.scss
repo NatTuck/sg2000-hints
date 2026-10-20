@@ -93,6 +93,14 @@ $code-block-font-size: 0.78em;
   text-decoration: line-through;
 }
 
+/* a faulting instruction: this slot raises the trap */
+.reveal table.pipe-tbl td.fault {
+  background: #fdeaea;
+  color: #b91c1c;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2px #b91c1c;
+}
+
 /* monospace signal names in tables should not look like links */
 .reveal table code {
   color: #12365f;
