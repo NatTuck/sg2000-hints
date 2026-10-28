@@ -1,0 +1,184 @@
+/*-- scss:defaults --*/
+
+$presentation-heading-color: #1a4f8b;
+$presentation-heading-font-weight: 600;
+$link-color: #1a4f8b;
+$code-block-font-size: 0.78em;
+
+/*-- scss:rules --*/
+
+.reveal h1,
+.reveal h2 {
+  text-transform: none;
+}
+
+.reveal .slide-number {
+  color: #1a4f8b;
+}
+
+.reveal table {
+  font-size: 0.80em;
+}
+
+/* Wide comparison tables stay legible and on one line */
+.reveal .tbl-tight table,
+.reveal table.tbl-tight {
+  table-layout: fixed;
+  width: 100%;
+  font-size: 0.72em;
+}
+
+.reveal .footer {
+  font-size: 0.5em;
+  color: #666;
+}
+
+.reveal blockquote {
+  border-left: 4px solid #1a4f8b;
+  padding-left: 1em;
+  font-style: italic;
+}
+
+.reveal code {
+  /* keep register names and API names legible */
+  white-space: nowrap;
+}
+
+/* Pipeline diagrams: one colour per instruction, carried down the stages */
+.reveal table.pipe-tbl {
+  font-size: 0.70em;
+  width: 100%;
+}
+
+.reveal table.pipe-tbl th,
+.reveal table.pipe-tbl td {
+  text-align: center;
+  padding: 0.22em 0.15em;
+  border: 1px solid #d7dee8;
+}
+
+.reveal table.pipe-tbl th:first-child,
+.reveal table.pipe-tbl td:first-child {
+  text-align: right;
+  font-weight: 700;
+  color: #6b7280;
+  background: none;
+  width: 5em;
+}
+
+.reveal table.pipe-tbl td.c1 { background: #dbe6f3; }
+.reveal table.pipe-tbl td.c2 { background: #fbe0d3; }
+.reveal table.pipe-tbl td.c3 { background: #dcf0e2; }
+.reveal table.pipe-tbl td.c4 { background: #f6dde7; }
+.reveal table.pipe-tbl td.c5 { background: #e6e1f4; }
+.reveal table.pipe-tbl td.c6 { background: #f1ecd8; }
+
+/* a bubble: the control bits are zeroed, so nothing happens in this slot */
+.reveal table.pipe-tbl td.nop {
+  background: #eef0f3;
+  color: #8a94a3;
+  font-style: italic;
+}
+
+/* a frozen stage: the instruction cannot advance */
+.reveal table.pipe-tbl td.frozen {
+  border-left: 2px dashed #c2410c;
+  border-right: 2px dashed #c2410c;
+}
+
+/* an annulled instruction: it was fetched, then killed before it could commit */
+.reveal table.pipe-tbl td.killed {
+  background: #fbe4e4;
+  color: #b91c1c;
+  text-decoration: line-through;
+}
+
+/* a faulting instruction: this slot raises the trap */
+.reveal table.pipe-tbl td.fault {
+  background: #fdeaea;
+  color: #b91c1c;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2px #b91c1c;
+}
+
+/* monospace signal names in tables should not look like links */
+.reveal table code {
+  color: #12365f;
+  background: none;
+}
+
+/* inline code: a quiet chip, not a link */
+.reveal p code,
+.reveal li code {
+  color: #12365f;
+  background: #eef2f7;
+  padding: 0.04em 0.22em;
+  border-radius: 3px;
+}
+
+
+/* GPU deck: the fabric/width tables read as a ladder, not a grid */
+.reveal table.width-tbl {
+  font-size: 0.74em;
+  width: 100%;
+}
+
+.reveal table.width-tbl td:last-child,
+.reveal table.width-tbl th:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* lane grids: one small box per thread */
+.reveal .lanes {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.62em;
+  letter-spacing: 0.12em;
+  line-height: 1.35;
+  color: #12365f;
+  background: #eef2f7;
+  padding: 0.5em 0.7em;
+  border-radius: 4px;
+}
+
+/* a measured number, as opposed to a quoted one */
+.reveal .measured {
+  color: #15803d;
+  font-weight: 700;
+}
+
+/* a spec-sheet number we did not measure */
+.reveal .quoted {
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* the one equation, set apart */
+.reveal .eq {
+  font-size: 1.15em;
+  text-align: center;
+  padding: 0.6em 0;
+  color: #12365f;
+}
+
+/* Archaeology asides: a deliberately different colour and a left rule, so
+   students can tell story-time from examinable material at a glance. */
+.reveal h2.arch {
+  color: #b45309;
+  border-left: 7px solid #b45309;
+  padding-left: 0.45em;
+}
+
+.reveal .arch-tag {
+  display: inline-block;
+  font-size: 0.42em;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: #b45309;
+  padding: 0.18em 0.6em;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin-left: 0.6em;
+}

@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1140" height="620" viewBox="0 0 1140 620">
+<defs><marker id="arw_1a4f8b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a4f8b"/></marker><marker id="arw_c2410c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/></marker><marker id="arw_7ea2c8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7ea2c8"/></marker><marker id="arw_6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker><marker id="arw_12365f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#12365f"/></marker></defs>
+<rect width="1140" height="620" fill="#ffffff"/>
+<text x="24.0" y="34.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="21" fill="#12365f" font-weight="700">PCIe topology: four machines, four shapes</text>
+<rect x="28.0" y="72.0" width="540.0" height="240.0" rx="8" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<rect x="572.0" y="72.0" width="540.0" height="240.0" rx="8" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<rect x="28.0" y="326.0" width="540.0" height="240.0" rx="8" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<rect x="572.0" y="326.0" width="540.0" height="240.0" rx="8" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<text x="44.0" y="102.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="16" fill="#12365f" font-weight="700">sg2000</text>
+<text x="552.0" y="102.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">one die</text>
+<rect x="42.0" y="114.0" width="512.0" height="170.0" rx="6" fill="#e8eef7" stroke="#1a4f8b" stroke-width="2" opacity="0.55"/>
+<line x1="58.0" y1="222.0" x2="538.0" y2="222.0" stroke="#1a4f8b" stroke-width="3" stroke-linecap="round" opacity="1.0"/>
+<text x="62.0" y="242.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">memory-mapped bus</text>
+<rect x="64.0" y="130.0" width="104.0" height="36.0" rx="4" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="116.0" y="153.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#12365f" font-weight="700">CPU</text>
+<line x1="116.0" y1="166.0" x2="116.0" y2="220.0" stroke="#1a4f8b" stroke-width="1.6" stroke-linecap="round" opacity="1.0"/>
+<rect x="184.0" y="130.0" width="104.0" height="36.0" rx="4" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="236.0" y="153.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#12365f" font-weight="700">TPU</text>
+<line x1="236.0" y1="166.0" x2="236.0" y2="220.0" stroke="#1a4f8b" stroke-width="1.6" stroke-linecap="round" opacity="1.0"/>
+<rect x="304.0" y="130.0" width="104.0" height="36.0" rx="4" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="356.0" y="153.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#12365f" font-weight="700">VPU</text>
+<line x1="356.0" y1="166.0" x2="356.0" y2="220.0" stroke="#1a4f8b" stroke-width="1.6" stroke-linecap="round" opacity="1.0"/>
+<rect x="424.0" y="130.0" width="104.0" height="36.0" rx="4" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="476.0" y="153.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#12365f" font-weight="700">ISP</text>
+<line x1="476.0" y1="166.0" x2="476.0" y2="220.0" stroke="#1a4f8b" stroke-width="1.6" stroke-linecap="round" opacity="1.0"/>
+<text x="44.0" y="300.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6b7280" font-style="italic">no bus — everything on-die</text>
+<text x="588.0" y="102.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="16" fill="#12365f" font-weight="700">celedyr</text>
+<rect x="598.0" y="164.0" width="136.0" height="56.0" rx="5" fill="#e8eef7" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<text x="666.0" y="198.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f">root complex</text>
+<rect x="768.0" y="164.0" width="136.0" height="56.0" rx="5" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<text x="836.0" y="198.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f">PCIe slot</text>
+<rect x="938.0" y="164.0" width="136.0" height="56.0" rx="5" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<text x="1006.0" y="198.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f" font-weight="700">Polaris 10</text>
+<line x1="736.0" y1="192.0" x2="764.0" y2="192.0" stroke="#c2410c" stroke-width="2" stroke-linecap="round" marker-end="url(#arw_c2410c)" opacity="1.0"/>
+<line x1="906.0" y1="192.0" x2="934.0" y2="192.0" stroke="#c2410c" stroke-width="2" stroke-linecap="round" marker-end="url(#arw_c2410c)" opacity="1.0"/>
+<text x="842.0" y="242.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">one card, one link</text>
+<text x="588.0" y="300.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6b7280" font-style="italic">1 slot</text>
+<text x="44.0" y="356.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="16" fill="#12365f" font-weight="700">kraken</text>
+<rect x="47.0" y="378.0" width="112.0" height="44.0" rx="4" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="103.0" y="396.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f">root</text>
+<text x="103.0" y="411.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f">complex</text>
+<line x1="103.0" y1="422.0" x2="103.0" y2="472.0" stroke="#1a4f8b" stroke-width="1.8" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<rect x="47.0" y="476.0" width="112.0" height="44.0" rx="4" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<text x="103.0" y="503.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#12365f" font-weight="700">GPU</text>
+<rect x="177.0" y="378.0" width="112.0" height="44.0" rx="4" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="233.0" y="396.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f">root</text>
+<text x="233.0" y="411.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f">complex</text>
+<line x1="233.0" y1="422.0" x2="233.0" y2="472.0" stroke="#1a4f8b" stroke-width="1.8" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<rect x="177.0" y="476.0" width="112.0" height="44.0" rx="4" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<text x="233.0" y="503.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#12365f" font-weight="700">GPU</text>
+<rect x="307.0" y="378.0" width="112.0" height="44.0" rx="4" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="363.0" y="396.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f">root</text>
+<text x="363.0" y="411.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f">complex</text>
+<line x1="363.0" y1="422.0" x2="363.0" y2="472.0" stroke="#1a4f8b" stroke-width="1.8" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<rect x="307.0" y="476.0" width="112.0" height="44.0" rx="4" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<text x="363.0" y="503.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#12365f" font-weight="700">GPU</text>
+<rect x="437.0" y="378.0" width="112.0" height="44.0" rx="4" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="493.0" y="396.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f">root</text>
+<text x="493.0" y="411.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f">complex</text>
+<line x1="493.0" y1="422.0" x2="493.0" y2="472.0" stroke="#1a4f8b" stroke-width="1.8" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<rect x="437.0" y="476.0" width="112.0" height="44.0" rx="4" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<text x="493.0" y="503.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#12365f" font-weight="700">GPU</text>
+<text x="44.0" y="554.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6b7280" font-style="italic">4 root complexes — no switches</text>
+<text x="588.0" y="356.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="16" fill="#12365f" font-weight="700">typhon</text>
+<rect x="588.0" y="368.0" width="252.0" height="168.0" rx="6" fill="#e8eef7" stroke="#1a4f8b" stroke-width="2" opacity="0.75"/>
+<text x="598.0" y="388.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#12365f" font-weight="700">NUMA 0</text>
+<rect x="596.0" y="398.0" width="118.0" height="118.0" rx="4" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="655.0" y="416.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" fill="#12365f" font-weight="700">PMC-Sierra</text>
+<text x="655.0" y="429.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" fill="#12365f">switch</text>
+<rect x="604.0" y="438.0" width="102.0" height="26.0" rx="3" fill="#ffffff" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
+<text x="655.0" y="455.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f" font-weight="700">Gaudi2</text>
+<rect x="604.0" y="470.0" width="102.0" height="26.0" rx="3" fill="#ffffff" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
+<text x="655.0" y="487.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f" font-weight="700">Gaudi2</text>
+<rect x="714.0" y="398.0" width="118.0" height="118.0" rx="4" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="773.0" y="416.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" fill="#12365f" font-weight="700">PMC-Sierra</text>
+<text x="773.0" y="429.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" fill="#12365f">switch</text>
+<rect x="722.0" y="438.0" width="102.0" height="26.0" rx="3" fill="#ffffff" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
+<text x="773.0" y="455.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f" font-weight="700">Gaudi2</text>
+<rect x="722.0" y="470.0" width="102.0" height="26.0" rx="3" fill="#ffffff" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
+<text x="773.0" y="487.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f" font-weight="700">Gaudi2</text>
+<rect x="844.0" y="368.0" width="252.0" height="168.0" rx="6" fill="#fdece4" stroke="#1a4f8b" stroke-width="2" opacity="0.75"/>
+<text x="854.0" y="388.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#12365f" font-weight="700">NUMA 1</text>
+<rect x="852.0" y="398.0" width="118.0" height="118.0" rx="4" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="911.0" y="416.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" fill="#12365f" font-weight="700">PMC-Sierra</text>
+<text x="911.0" y="429.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" fill="#12365f">switch</text>
+<rect x="860.0" y="438.0" width="102.0" height="26.0" rx="3" fill="#ffffff" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
+<text x="911.0" y="455.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f" font-weight="700">Gaudi2</text>
+<rect x="860.0" y="470.0" width="102.0" height="26.0" rx="3" fill="#ffffff" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
+<text x="911.0" y="487.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f" font-weight="700">Gaudi2</text>
+<rect x="970.0" y="398.0" width="118.0" height="118.0" rx="4" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="1029.0" y="416.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" fill="#12365f" font-weight="700">PMC-Sierra</text>
+<text x="1029.0" y="429.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" fill="#12365f">switch</text>
+<rect x="978.0" y="438.0" width="102.0" height="26.0" rx="3" fill="#ffffff" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
+<text x="1029.0" y="455.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f" font-weight="700">Gaudi2</text>
+<rect x="978.0" y="470.0" width="102.0" height="26.0" rx="3" fill="#ffffff" stroke="#c2410c" stroke-width="1.4" opacity="1.0"/>
+<text x="1029.0" y="487.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f" font-weight="700">Gaudi2</text>
+<text x="588.0" y="554.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6b7280" font-style="italic">2 sockets x 2 switches x 2 cards</text>
+<text x="570.0" y="604.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18" fill="#c2410c" font-weight="700">a shared bus cannot be a tree</text>
+</svg>

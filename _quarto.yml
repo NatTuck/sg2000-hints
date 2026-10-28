@@ -43,6 +43,10 @@ website:
       - text: Pipelining
         menu:
           - pipelining-slides/index.qmd
+      - text: GPUs
+        menu:
+          - gpu-slides/index.qmd
+          - gpu-slides/refs.md
   search: true
 
 format:
