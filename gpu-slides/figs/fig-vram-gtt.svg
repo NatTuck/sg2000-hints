@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="470" viewBox="0 0 1100 470">
+<defs><marker id="arw_1a4f8b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a4f8b"/></marker><marker id="arw_c2410c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/></marker><marker id="arw_7ea2c8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7ea2c8"/></marker><marker id="arw_6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker><marker id="arw_12365f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#12365f"/></marker></defs>
+<rect width="1100" height="470" fill="#ffffff"/>
+<text x="24.0" y="34.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="21" fill="#12365f" font-weight="700">the gap is the bus</text>
+<text x="24.0" y="58.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#6b7280" font-style="italic">VRAM bandwidth vs the GTT path, GB/s</text>
+<rect x="170.0" y="74.0" width="26.0" height="12.0" rx="2" fill="#1a4f8b" stroke="#1a4f8b" stroke-width="1" opacity="1.0"/>
+<text x="202.0" y="85.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f" font-weight="700">VRAM</text>
+<rect x="266.0" y="76.0" width="26.0" height="8.0" rx="2" fill="#7ea2c8" stroke="#7ea2c8" stroke-width="1" opacity="1.0"/>
+<text x="298.0" y="85.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f" font-weight="700">GTT path</text>
+<text x="1090.0" y="92.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">gap</text>
+<text x="154.0" y="140.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14.5" fill="#12365f" font-weight="700">celedyr</text>
+<rect x="170.0" y="116.0" width="71.7" height="18.0" rx="3" fill="#1a4f8b" stroke="#1a4f8b" stroke-width="1" opacity="1.0"/>
+<rect x="170.0" y="140.0" width="5.0" height="12.0" rx="3" fill="#7ea2c8" stroke="#7ea2c8" stroke-width="1" opacity="1.0"/>
+<text x="249.7" y="130.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13.5" fill="#1a4f8b" font-weight="700">256</text>
+<text x="183.0" y="151.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6b7280">16</text>
+<text x="1090.0" y="142.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#c2410c" font-weight="700">16x</text>
+<text x="154.0" y="220.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14.5" fill="#12365f" font-weight="700">kraken</text>
+<rect x="170.0" y="196.0" width="286.7" height="18.0" rx="3" fill="#1a4f8b" stroke="#1a4f8b" stroke-width="1" opacity="1.0"/>
+<rect x="170.0" y="220.0" width="5.0" height="12.0" rx="3" fill="#7ea2c8" stroke="#7ea2c8" stroke-width="1" opacity="1.0"/>
+<text x="464.7" y="210.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13.5" fill="#1a4f8b" font-weight="700">1024</text>
+<text x="183.0" y="231.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6b7280">16</text>
+<text x="1090.0" y="222.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#c2410c" font-weight="700">64x</text>
+<text x="154.0" y="300.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14.5" fill="#12365f" font-weight="700">vampire</text>
+<rect x="170.0" y="276.0" width="56.0" height="18.0" rx="3" fill="#15803d" stroke="#15803d" stroke-width="1" opacity="1.0"/>
+<rect x="170.0" y="300.0" width="56.0" height="12.0" rx="3" fill="#7ea2c8" stroke="#7ea2c8" stroke-width="1" opacity="1.0"/>
+<text x="234.0" y="290.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13.5" fill="#15803d" font-weight="700">200</text>
+<text x="234.0" y="311.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6b7280">200</text>
+<text x="1090.0" y="302.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#15803d" font-weight="700">1x</text>
+<text x="154.0" y="380.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14.5" fill="#12365f" font-weight="700">typhon</text>
+<rect x="170.0" y="356.0" width="686.0" height="18.0" rx="3" fill="#1a4f8b" stroke="#1a4f8b" stroke-width="1" opacity="1.0"/>
+<rect x="170.0" y="380.0" width="5.0" height="12.0" rx="3" fill="#7ea2c8" stroke="#7ea2c8" stroke-width="1" opacity="1.0"/>
+<text x="864.0" y="370.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13.5" fill="#1a4f8b" font-weight="700">2450</text>
+<text x="183.0" y="391.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6b7280">16</text>
+<text x="1090.0" y="382.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#c2410c" font-weight="700">~150x</text>
+<line x1="170.0" y1="430.0" x2="870.0" y2="430.0" stroke="#1a4f8b" stroke-width="2" stroke-linecap="round" opacity="1.0"/>
+<line x1="170.0" y1="430.0" x2="170.0" y2="436.0" stroke="#6b7280" stroke-width="1.2" stroke-linecap="round" opacity="1.0"/>
+<text x="170.0" y="450.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#6b7280">0</text>
+<line x1="310.0" y1="430.0" x2="310.0" y2="436.0" stroke="#6b7280" stroke-width="1.2" stroke-linecap="round" opacity="1.0"/>
+<text x="310.0" y="450.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#6b7280">500</text>
+<line x1="450.0" y1="430.0" x2="450.0" y2="436.0" stroke="#6b7280" stroke-width="1.2" stroke-linecap="round" opacity="1.0"/>
+<text x="450.0" y="450.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#6b7280">1000</text>
+<line x1="590.0" y1="430.0" x2="590.0" y2="436.0" stroke="#6b7280" stroke-width="1.2" stroke-linecap="round" opacity="1.0"/>
+<text x="590.0" y="450.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#6b7280">1500</text>
+<line x1="730.0" y1="430.0" x2="730.0" y2="436.0" stroke="#6b7280" stroke-width="1.2" stroke-linecap="round" opacity="1.0"/>
+<text x="730.0" y="450.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#6b7280">2000</text>
+<line x1="870.0" y1="430.0" x2="870.0" y2="436.0" stroke="#6b7280" stroke-width="1.2" stroke-linecap="round" opacity="1.0"/>
+<text x="870.0" y="450.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#6b7280">2500</text>
+<text x="520.0" y="466.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#6b7280" font-style="italic">GB/s</text>
+<text x="1090.0" y="466.0" text-anchor="end" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">three of the four share a 16 GB/s path</text>
+</svg>

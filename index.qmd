@@ -65,3 +65,10 @@ CS 4250 — Computer Architecture.
 - [Pipelining: One Instruction Per Clock](pipelining-slides/index.qmd) —
   the five-stage Beta, the three strategies for data and control hazards, and
   what the C906's in-order pipeline actually implements.
+
+## GPUs
+
+- [GPUs and the Throughput Machine](gpu-slides/index.qmd) —
+  latency versus throughput, SIMT, the inverted memory hierarchy, and why a GPU
+  is a card: PCI, PCIe, BARs, and what the sg2000 would have to change.
+- [GPUs — Reference Notes](gpu-slides/refs.md) — a condensed version.

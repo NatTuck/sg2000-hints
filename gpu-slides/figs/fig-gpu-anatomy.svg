@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1140" height="550" viewBox="0 0 1140 550">
+<defs><marker id="arw_1a4f8b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a4f8b"/></marker><marker id="arw_c2410c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/></marker><marker id="arw_7ea2c8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7ea2c8"/></marker><marker id="arw_6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker><marker id="arw_12365f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#12365f"/></marker></defs>
+<rect width="1140" height="550" fill="#ffffff"/>
+<text x="24.0" y="34.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="21" fill="#12365f" font-weight="700">Anatomy: one CU, a shader array, the card</text>
+<rect x="28.0" y="62.0" width="310.0" height="440.0" rx="8" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<rect x="388.0" y="62.0" width="330.0" height="440.0" rx="8" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<rect x="768.0" y="62.0" width="344.0" height="440.0" rx="8" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<line x1="342.0" y1="302.0" x2="384.0" y2="302.0" stroke="#c2410c" stroke-width="2.4" stroke-linecap="round" marker-end="url(#arw_c2410c)" opacity="1.0"/>
+<text x="363.0" y="288.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" fill="#c2410c" font-weight="700">×16</text>
+<line x1="722.0" y1="302.0" x2="764.0" y2="302.0" stroke="#c2410c" stroke-width="2.4" stroke-linecap="round" marker-end="url(#arw_c2410c)" opacity="1.0"/>
+<text x="743.0" y="288.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" fill="#c2410c" font-weight="700">×4</text>
+<text x="44.0" y="92.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="16" fill="#12365f" font-weight="700">1 CU</text>
+<rect x="40.0" y="114.0" width="54.0" height="32.0" rx="3" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.6" opacity="1.0"/>
+<text x="67.0" y="135.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f">sched</text>
+<rect x="100.0" y="114.0" width="226.0" height="32.0" rx="3" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.6" opacity="1.0"/>
+<text x="213.0" y="135.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f" font-weight="700">SIMD16 · 16 lanes</text>
+<line x1="96.0" y1="130.0" x2="98.0" y2="130.0" stroke="#1a4f8b" stroke-width="1.4" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<rect x="40.0" y="160.0" width="54.0" height="32.0" rx="3" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.6" opacity="1.0"/>
+<text x="67.0" y="181.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f">sched</text>
+<rect x="100.0" y="160.0" width="226.0" height="32.0" rx="3" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.6" opacity="1.0"/>
+<text x="213.0" y="181.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f" font-weight="700">SIMD16 · 16 lanes</text>
+<line x1="96.0" y1="176.0" x2="98.0" y2="176.0" stroke="#1a4f8b" stroke-width="1.4" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<rect x="40.0" y="206.0" width="54.0" height="32.0" rx="3" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.6" opacity="1.0"/>
+<text x="67.0" y="227.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f">sched</text>
+<rect x="100.0" y="206.0" width="226.0" height="32.0" rx="3" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.6" opacity="1.0"/>
+<text x="213.0" y="227.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f" font-weight="700">SIMD16 · 16 lanes</text>
+<line x1="96.0" y1="222.0" x2="98.0" y2="222.0" stroke="#1a4f8b" stroke-width="1.4" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<rect x="40.0" y="252.0" width="54.0" height="32.0" rx="3" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.6" opacity="1.0"/>
+<text x="67.0" y="273.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f">sched</text>
+<rect x="100.0" y="252.0" width="226.0" height="32.0" rx="3" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.6" opacity="1.0"/>
+<text x="213.0" y="273.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f" font-weight="700">SIMD16 · 16 lanes</text>
+<line x1="96.0" y1="268.0" x2="98.0" y2="268.0" stroke="#1a4f8b" stroke-width="1.4" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<rect x="40.0" y="308.0" width="286.0" height="38.0" rx="3" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="183.0" y="333.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#12365f" font-weight="700">VGPR file 256 KB</text>
+<rect x="40.0" y="354.0" width="138.0" height="34.0" rx="3" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.6" opacity="1.0"/>
+<text x="109.0" y="376.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f">LDS 64 KB</text>
+<rect x="188.0" y="354.0" width="138.0" height="34.0" rx="3" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.6" opacity="1.0"/>
+<text x="257.0" y="376.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f">L1 16 KB</text>
+<rect x="40.0" y="396.0" width="286.0" height="32.0" rx="3" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.6" opacity="1.0"/>
+<text x="183.0" y="418.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f">scalar unit</text>
+<text x="183.0" y="458.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#c2410c" font-weight="700">64 lanes total</text>
+<text x="183.0" y="480.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">4 SIMD16, one scheduler each</text>
+<text x="404.0" y="92.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="16" fill="#12365f" font-weight="700">one shader array</text>
+<text x="404.0" y="110.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#6b7280" font-style="italic">16 CUs</text>
+<rect x="404.0" y="120.0" width="26.0" height="20.0" rx="2" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.0" opacity="1.0"/>
+<rect x="433.0" y="120.0" width="26.0" height="20.0" rx="2" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.0" opacity="1.0"/>
+<rect x="462.0" y="120.0" width="26.0" height="20.0" rx="2" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.0" opacity="1.0"/>
+<rect x="491.0" y="120.0" width="26.0" height="20.0" rx="2" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.0" opacity="1.0"/>
+<rect x="520.0" y="120.0" width="26.0" height="20.0" rx="2" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.0" opacity="1.0"/>
+<rect x="549.0" y="120.0" width="26.0" height="20.0" rx="2" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.0" opacity="1.0"/>
+<rect x="578.0" y="120.0" width="26.0" height="20.0" rx="2" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.0" opacity="1.0"/>
+<rect x="607.0" y="120.0" width="26.0" height="20.0" rx="2" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.0" opacity="1.0"/>
+<rect x="404.0" y="144.0" width="26.0" height="20.0" rx="2" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.0" opacity="1.0"/>
+<rect x="433.0" y="144.0" width="26.0" height="20.0" rx="2" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.0" opacity="1.0"/>
+<rect x="462.0" y="144.0" width="26.0" height="20.0" rx="2" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.0" opacity="1.0"/>
+<rect x="491.0" y="144.0" width="26.0" height="20.0" rx="2" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.0" opacity="1.0"/>
+<rect x="520.0" y="144.0" width="26.0" height="20.0" rx="2" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.0" opacity="1.0"/>
+<rect x="549.0" y="144.0" width="26.0" height="20.0" rx="2" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.0" opacity="1.0"/>
+<rect x="578.0" y="144.0" width="26.0" height="20.0" rx="2" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.0" opacity="1.0"/>
+<rect x="607.0" y="144.0" width="26.0" height="20.0" rx="2" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.0" opacity="1.0"/>
+<line x1="547.0" y1="184.0" x2="547.0" y2="286.0" stroke="#1a4f8b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arw_1a4f8b)" opacity="1.0"/>
+<rect x="404.0" y="288.0" width="287.0" height="44.0" rx="4" fill="#ffffff" stroke="#1a4f8b" stroke-width="2" opacity="1.0"/>
+<text x="547.0" y="316.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" fill="#12365f" font-weight="700">L2  4 MB</text>
+<text x="404.0" y="362.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">16 CUs, all sharing one L2</text>
+<text x="404.0" y="380.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">and one path to HBM2</text>
+<text x="404.0" y="410.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="13" fill="#c2410c" font-weight="700">1,024 lanes</text>
+<text x="784.0" y="92.0" text-anchor="start" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="16" fill="#12365f" font-weight="700">the card</text>
+<rect x="782.0" y="104.0" width="150.0" height="60.0" rx="4" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="857.0" y="140.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f" font-weight="700">shader array</text>
+<rect x="940.0" y="104.0" width="150.0" height="60.0" rx="4" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="1015.0" y="140.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f" font-weight="700">shader array</text>
+<rect x="782.0" y="172.0" width="150.0" height="60.0" rx="4" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="857.0" y="208.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f" font-weight="700">shader array</text>
+<rect x="940.0" y="172.0" width="150.0" height="60.0" rx="4" fill="#e8eef7" stroke="#1a4f8b" stroke-width="1.8" opacity="1.0"/>
+<text x="1015.0" y="208.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f" font-weight="700">shader array</text>
+<rect x="782.0" y="250.0" width="36.0" height="32.0" rx="2" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.4" opacity="1.0"/>
+<rect x="822.0" y="250.0" width="36.0" height="32.0" rx="2" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.4" opacity="1.0"/>
+<rect x="862.0" y="250.0" width="36.0" height="32.0" rx="2" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.4" opacity="1.0"/>
+<rect x="902.0" y="250.0" width="36.0" height="32.0" rx="2" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.4" opacity="1.0"/>
+<rect x="942.0" y="250.0" width="36.0" height="32.0" rx="2" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.4" opacity="1.0"/>
+<rect x="982.0" y="250.0" width="36.0" height="32.0" rx="2" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.4" opacity="1.0"/>
+<rect x="1022.0" y="250.0" width="36.0" height="32.0" rx="2" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.4" opacity="1.0"/>
+<rect x="1062.0" y="250.0" width="36.0" height="32.0" rx="2" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.4" opacity="1.0"/>
+<text x="940.0" y="302.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#12365f" font-weight="700">8 HBM2 controllers</text>
+<rect x="782.0" y="314.0" width="160.0" height="32.0" rx="3" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.6" opacity="1.0"/>
+<text x="862.0" y="335.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11.5" fill="#12365f">command processor</text>
+<rect x="952.0" y="314.0" width="70.0" height="32.0" rx="3" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.6" opacity="1.0"/>
+<text x="987.0" y="335.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" fill="#12365f">copy engine</text>
+<rect x="1028.0" y="314.0" width="70.0" height="32.0" rx="3" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.6" opacity="1.0"/>
+<text x="1063.0" y="335.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10.5" fill="#12365f">copy engine</text>
+<rect x="782.0" y="354.0" width="148.0" height="30.0" rx="3" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.6" opacity="1.0"/>
+<text x="856.0" y="374.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#12365f">display</text>
+<rect x="940.0" y="354.0" width="158.0" height="30.0" rx="3" fill="#ffffff" stroke="#1a4f8b" stroke-width="1.6" opacity="1.0"/>
+<text x="1019.0" y="374.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#12365f">video engine</text>
+<text x="940.0" y="414.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#c2410c" font-weight="700">4 arrays · 60 CUs of 64</text>
+<text x="940.0" y="434.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">one die, one memory system</text>
+<text x="940.0" y="452.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#6b7280" font-style="italic">and two copies of the bus</text>
+<text x="570.0" y="530.0" text-anchor="middle" font-family="Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18" fill="#c2410c" font-weight="700">a GPU is a SoC, not a big ALU</text>
+</svg>

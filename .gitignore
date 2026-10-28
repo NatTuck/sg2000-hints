@@ -17,5 +17,6 @@ hints/work/build*/
 boot-slides/*.html
 memory-slides/*.html
 pipelining-slides/*.html
+gpu-slides/*.html
 
 **/*.quarto_ipynb
