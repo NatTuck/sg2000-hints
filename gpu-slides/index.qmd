@@ -1549,35 +1549,62 @@ does it cost?
 
 ## PCI, 1992 {.smaller}
 
-The Peripheral Component Interconnect: a **shared parallel bus**.
+The Peripheral Component Interconnect — a shared parallel bus, and the same
+shape as two buses you already know.
 
-| | PCI |
-|---|---|
-| Width | 32 or 64 bits, parallel |
-| Clock | 33 or 66 MHz |
-| Bandwidth | **133 MB/s** (32/33), 533 MB/s (64/66) |
-| Topology | **every device on the same wires** |
-| Arbitration | central — one device transmits at a time |
+| | I²C | SPI | **PCI** |
+|---|---|---|---|
+| Wires | 2 | 3 + n CS | **~50–100** |
+| Clock | 100 k–3.4 M | 10–100 M | **33 / 66 MHz** |
+| Bandwidth | ~50 KB/s | ~6 MB/s | **133 MB/s** |
+| Addressing | 7-bit, in-band | chip-select wire | **memory-mapped** |
+| Arbitration | open-drain collision | none | **central arbiter** |
 
 ::: {.fragment}
-Shared wires are the whole design and also the whole problem: **one device talks
-at a time**, and everyone's bandwidth is everyone else's.
+Same three problems — who is this for, who gets to talk, how fast — and three
+different answers. PCI's answer to *speed* is **width**: 32 wires switching
+together, not one wire switching faster.
 :::
 
 ::: {.notes}
-The 133 MB/s figure is worth putting next to the ladder from Part III: it is
-the same order as the sg2000's USB 2.0 link. PCI was a huge improvement in 1992
-and is slower than a single SATA port today.
+They have already bit-banged I²C, so make the comparison explicit rather than
+letting PCI feel like a new universe. It is the same three problems at a
+different scale.
 
-Arbitration is the concept students need: a shared bus is a broadcast medium, so
-somebody has to decide who talks. That decision costs cycles and adds latency,
-and it gets worse with more devices — which is the opposite of what you want.
+**Wires do not scale the same way.** I²C adds *zero* wires per device — that is
+its whole reason to exist. SPI is 4 + one chip-select per device. PCI is 50–100
+wires *total*, shared by every slot. That is why PCI is a backplane bus and I²C
+is a board bus.
+
+**Speed is width, not frequency.** PCI's 33 MHz is *slower* than SPI's 100 MHz.
+It wins by being 32 bits wide — the same trick as a GPU's SIMD, which is worth
+pointing out because they have just met it.
+
+**Arbitration is the sharpest contrast.** I²C arbitrates by *collision
+detection*: open-drain means a master driving high loses to one driving low, so
+the loser notices and backs off. PCI cannot do that — push-pull 32-bit signals
+cannot be wired-ANDed. So PCI uses dedicated REQ#/GNT# wires per slot and a
+**central arbiter**. Same problem, opposite solution. PCIe will solve it a third
+way: point-to-point, so there is nothing to arbitrate at all.
+
+**Addressing is the one that changes everything**, and it is the next slide.
+
+The 133 MB/s figure is worth putting next to the Part III ladder: it is about
+twice the sg2000's USB 2.0 link. A revolution in 1992, and slower than a single
+SATA port today.
 :::
 
 ## PCI's Two Good Ideas {.smaller}
 
 PCI died. Two of its ideas did not, and they are why we are still living with its
 successor.
+
+On I²C you read a *register*: send the address, then the register number, then
+bytes. The device's state lives **inside the device**, at addresses the device
+defines.
+
+PCI inverts that. A device is given a range of **the CPU's own address space**,
+and the CPU loads and stores into it like memory.
 
 **1. Configuration space.** Every device has 256 bytes of standard registers
 holding its vendor ID, device ID, class, and — crucially — its **BARs**. The OS
