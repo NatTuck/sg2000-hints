@@ -75,19 +75,23 @@ buffer of latency × rate.
 
 ## Four Attempts at a Throughput Machine {.smaller}
 
-| | SIMD width | Threads per issue slot | Outcome |
+| | SIMD width | Independent streams | Outcome |
 |---|---|---|---|
-| Itanium (2001) | 3-wide VLIW | 1 | lost — no parallelism to fill the width |
-| SPARC T2 (2007) | 1 (scalar) | 8 | lost — too narrow to matter |
-| Knights Landing (2016) | 32 (2 × AVX-512) | **2** | lost — wide, nothing to hide latency with |
-| GPU (2006–) | 16–32 | **10–16** | **won** |
+| Itanium (2001) | 3-wide VLIW | 1 per core | lost — no parallelism to fill the width |
+| SPARC T2 (2007) | 1 (scalar) | 8 per core, 2 issue slots | lost — too narrow to matter |
+| Knights Landing (2016) | 32 (2 × AVX-512) | **4** per core | lost — a compromise on every axis |
+| GPU (2006–) | 16–32 | 10 per scheduler | **won** |
 
-Each failure got one axis right. KNL got both axes and forgot the **depth** — and
-it was also the one that kept x86 compatibility, which proves compatibility was
-never the problem.
+KNL had width, **4-way SMT** *and* a 2-wide out-of-order pipeline, plus x86
+compatibility — and still lost. It is not "more mechanisms wins".
 
-**The examinable claim:** thread depth per issue slot is the design, and
-`threads = latency ÷ work` is the arbiter.
+**The examinable claim:** the GPU is the only one of the four that gave
+something *up* — out-of-order execution and compatibility — and spent everything
+on width and depth.
+
+Corrections worth knowing: KNL is **4-way SMT and out-of-order** (in-order is
+Knights Corner); T2 issues **up to 2 instructions per cycle**, not 1 (that is the
+T1).
 
 ## Archaeology {.smaller}
 
@@ -590,7 +594,7 @@ starts being data supply.
 
 - MI50: 60 CU, 3,840 lanes, 13.3 TFLOPS, 1,024 GB/s HBM2 — vendor.
 - Polaris 10 ~256 GB/s, RX 7600 ~288 GB/s — vendor. pegasus bandwidth **not measured**.
-- Opteron 6234 ≈ 0.46 TFLOPS — derived from core count, clock, vector width.
+- Opteron 6234 ≈ 0.46 TFLOPS — 12 Bulldozer modules × 16 flops/cycle × 2.4 GHz; 24 cores, 12 FPUs.
 - Gaudi2 24 × 100 GbE RoCE, 2.45 TB/s — vendor; the 48 MACs are measured.
 - PCIe generations, and Vega 20 CU internals — vendor specs.
 

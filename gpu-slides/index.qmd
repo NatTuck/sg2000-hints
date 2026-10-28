@@ -241,22 +241,22 @@ them, but because they were never switched out.
 
 The GPU is not the first machine to make this bet. It is the first one to win it.
 
-| | SIMD width | Threads per issue slot | Outcome |
+| | SIMD width | Independent streams | Outcome |
 |---|---|---|---|
-| **Itanium** (2001) | 3-wide VLIW | 1 | lost — no parallelism to fill the width |
-| **SPARC T2** (2007) | 1 (scalar) | 8 | lost — too narrow to matter |
-| **Knights Landing** (2016) | 32 (2 × AVX-512) | **2** | lost — wide, with nothing to hide latency with |
-| **GPU** (2006–) | 16–32 | **10–16** | **won** |
+| **Itanium** (2001) | 3-wide VLIW | 1 per core | lost — no parallelism to fill the width |
+| **SPARC T2** (2007) | 1 (scalar) | 8 per core, 2 issue slots | lost — too narrow to matter |
+| **Knights Landing** (2016) | 32 (2 × AVX-512) | **4** per core | lost — a compromise on every axis |
+| **GPU** (2006–) | 16–32 | 10 per scheduler | **won** |
 
 ::: {.fragment}
-Each failure got exactly **one** axis right. Itanium had width and no threads.
-T2 had threads and no width. KNL had both — and forgot the depth.
+Itanium had width and no threads. T2 had threads and no width. KNL had both —
+*plus* out-of-order execution and x86 compatibility — and still lost.
 :::
 
 ::: {.fragment}
-KNL is the control experiment. It fixed the one complaint that killed the other
-two — *stay x86, keep your software* — and still lost. **Compatibility was never
-the problem.**
+So it is not "more mechanisms wins". KNL hedged on every axis and was best at
+none. The GPU **dropped** out-of-order and dropped compatibility, and spent
+everything on width and depth.
 :::
 
 ::: {.notes}
@@ -268,22 +268,29 @@ out-of-order, no hardware speculation, and the compiler statically schedules
 everything. It failed because the compiler cannot schedule around a cache miss it
 cannot predict. It starved on lack of parallelism.
 
-**SPARC T2** (2007) is the opposite: 8 cores × 8 threads, in-order, single issue,
-one scalar lane each. It had threads and no width, and it kept coherent SMP
-memory and a general-purpose ISA, so it lost to Xeons at single-thread while not
-being wide enough to win at throughput.
+**SPARC T2** (2007) is the opposite: 8 cores × 8 threads, in-order, one scalar
+lane each. It had threads and no width, and it kept coherent SMP memory and a
+general-purpose ISA, so it lost to Xeons at single-thread while not being wide
+enough to win at throughput. (Careful: T2 is *not* single-issue. Its eight
+threads split into two groups of four, each with its own selector and integer
+ALU, so it issues up to two instructions per cycle. Single-issue is the T1.)
 
-**Knights Landing** (2016) had 72 Atom-derived cores, 2 threads each, and two
-AVX-512 units per core — so 32 lanes wide, with **2** threads per issue slot.
-That is nothing against a 500-cycle memory latency. It worked only where the
-prefetchers worked: dense linear algebra. Sparse, graph, branchy code fell off a
-cliff.
+**Knights Landing** (2016) is the interesting failure, and the one most often
+misdescribed. It was not in-order — that was Knights Corner. KNL had 72
+Silvermont-derived cores with **4-way SMT** and a **2-wide out-of-order** pipeline
+(72-entry ROB), plus two AVX-512 units per core, so 32 lanes wide. Three
+latency-hiding mechanisms: width, threads, *and* dynamic scheduling.
 
-The GPU has 10 wavefronts or 16 warps per slot *on top of* 16–32 lanes. That
-product is the whole design, and Little's Law is the arbiter.
+And it still lost, which is the real lesson. Four threads is not ten, a 2-wide
+Atom-derived core has poor single-thread performance, and it demanded AVX-512-aware
+code without giving GPU-like throughput in return. It was a hedge, and a hedge is
+a machine that is best at nothing.
 
-If a student asks "so which axis matters more" — depth, for latency, and the
-KNL result is the evidence.
+The GPU made the opposite trade: **no out-of-order at all**, no compatibility,
+and everything into 10–16 streams of 16–32 lanes. Commitment beat compromise.
+
+If a student asks "so which axis matters more" — the honest answer is that the
+GPU is the only one of the four that gave anything *up*.
 :::
 
 ## The Arithmetic of Hiding {.smaller}
@@ -355,7 +362,7 @@ Tera Computer Company, 1998. The purest thread-depth machine ever built.
 |---|---|
 | Thread contexts per processor | **128**, each with its own register set |
 | Thread switch | **every cycle**; blocked threads are skipped |
-| Data caches | **none at all** |
+| Data caches | **none in the processor** |
 | Memory | "full/empty" bits on every word — sync in hardware |
 | First system | 4 processors, **512 threads**, gallium arsenide, at SDSC |
 
@@ -370,7 +377,10 @@ machine immediately: it is the same argument, twenty years early, in a CPU.
 This is the best single artefact for the argument in this lecture. Tera looked at
 memory latency, decided caching was a losing game, and gave every processor 128
 register sets so there was always a runnable thread. The hardware switches thread
-**every cycle** and simply skips the blocked ones. No data cache. None.
+**every cycle** and simply skips the blocked ones. No data cache in the
+processor at all — though be precise if pushed: the memory modules do carry a
+tiny hot-spot cache for contended synchronisation words, about 256 words across
+the whole machine.
 
 That is worth pausing on, because it is the answer to a question from earlier in
 the lecture: switching costs nothing *because all 128 register sets are already
@@ -426,6 +436,7 @@ Thinking Machines CM-2, 1987. The width axis taken to its conclusion.
 | Interconnect | hypercube |
 | Branches | **none** — no per-processor control flow at all |
 | Communication | "news" — routing between processors |
+| Floating point | optional Weitek FPU, **one per 32 processors** |
 
 ::: {.fragment}
 A one-bit ALU is the most complete possible statement of "spend everything on
@@ -466,9 +477,15 @@ Against celedyr — the 24-core Opteron box from the multicore lecture:
 
 | | |
 |---|---|
-| Cores | 24 × 2.4 GHz |
-| Vector width | 8 flops/cycle/core (256-bit FMA) |
-| Throughput | **≈ 0.46 TFLOPS** <span class="quoted">derived</span> |
+| Cores | 24, in **12 modules** |
+| FPU | one **256-bit FPU per module**, shared by both cores |
+| Per core | one 128-bit half = 8 flops/cycle |
+| Throughput | 12 × 16 × 2.4 GHz = **≈ 0.46 TFLOPS** <span class="quoted">derived</span> |
+
+::: {.fragment}
+Twenty-four cores, but **twelve FPUs**. That 0.46 TFLOPS needs *both* cores in
+every module doing dense FP work — put one thread on a module and you get half.
+:::
 
 ::: {.fragment}
 **29×** in one card, against a two-socket server. And that is the *easy*
@@ -478,13 +495,23 @@ comparison — it assumes the work is already perfectly parallel and dense.
 ::: {.notes}
 The 29× is deliberately the optimistic case, and the next slide is the bill.
 
-Note the honesty marker on the Opteron number: it is a paper calculation from
-core count, clock, and vector width, not a benchmark. If you want the real
-number, run it — that is a good lab exercise.
+The module structure is the thing to get right, because it is the same lesson as
+"a CU is not a core" arriving from the other direction. A Bulldozer module is two
+integer cores sharing **one** 256-bit FlexFPU built from two 128-bit FMACs. Each
+core gets one half, so 8 flops/cycle per core — and there are twelve FPUs for
+twenty-four cores, not twenty-four.
 
-Also worth saying: in 2018 this class of throughput cost four figures. The same throughput is
-now in a laptop APU, which is the Moore's Law story from Part 0 arriving at the
-accelerator.
+The arithmetic is unchanged: 12 modules × 16 flops/cycle = 192 flops/cycle, same
+as 24 cores × 8. But the *peak requires two FP threads per module*. One thread
+alone reaches half of it, which is why this part was so bad at exactly the dense
+FP work the GPUs were about to eat.
+
+Careful with codenames: SledgeHammer is K8, where every core had its own FPU. The
+shared-FPU machine is Bulldozer/Interlagos, which is what is on celedyr.
+
+Note the honesty marker on the Opteron number: it is a paper calculation from
+module count, clock, and vector width, not a benchmark. If you want the real
+number, run it — that is a good lab exercise.
 :::
 
 ## What We Paid {.smaller}
@@ -687,6 +714,7 @@ satellite imagery.
 | Processing elements | **16,384**, one bit each |
 | Shape | 128 × 128 array |
 | Workload | satellite images |
+| Clock | **10 MHz** |
 | Control flow | none per element |
 
 ::: {.fragment}
@@ -888,7 +916,8 @@ it went further than any GPU: the SPEs have no cache *at all*, only a 256 KB
 scratchpad, and all data movement is explicit DMA. You do not get a cache miss;
 you get a DMA you forgot to issue.
 
-It shipped in the PlayStation 3, so students have a hook. And it is a good
+It shipped in the PlayStation 3 — which used **seven of the eight SPEs**, one
+being disabled for yield — so students have a hook. And it is a good
 example of a design that was technically admired and commercially painful: the
 programming model was so demanding that most PS3 titles used only the PPE and
 left the SPEs idle.
@@ -2171,7 +2200,7 @@ Groq TSP, 2020. The bet that failed in 2001 — now shipping.
 |---|---|---|
 | Scheduling | static, compiler | **static, compiler** |
 | Out-of-order | none | **none** |
-| Caches | (present, but not the point) | **none** |
+| Caches | (present, but not the point) | **none** — 220 MiB of SRAM instead |
 | Why it failed/works | couldn't find the parallelism | **inference: the schedule is knowable** |
 
 ::: {.fragment}
