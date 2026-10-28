@@ -1306,13 +1306,16 @@ GA144, 2011. The one design point with **no clock tree at all**.
 |---|---|
 | Cores | **144**, each an independent asynchronous computer |
 | Clock | **none** — each node runs when a neighbour gives it work |
+| Effective rate | **~700 MHz** per node — 1.4 ns per basic opcode at 1.8 V |
+| Aggregate | 144 nodes ≈ **96 GOPS** at full activity |
 | Per node | 18-bit stack machine, 64 words RAM + 64 words ROM |
 | Power | **14 µW to 650 mW**, depending on activity |
 | Language | arrayForth |
 
 ::: {.fragment}
 Compare the sg2000: one 25 MHz crystal, eight PLLs, ninety leaf clocks, ~3 W.
-GreenArrays deleted the tree — power is spent only where data actually moves.
+GreenArrays deleted the tree — and an idle node costs only leakage, because
+nothing is clocking it.
 :::
 
 ::: {.notes}
@@ -1324,10 +1327,26 @@ one is a decision someone made. GreenArrays made a different decision: no clock,
 144 nodes in an 18 × 8 array, each of which wakes when a neighbour hands it a
 value, computes, and goes back to sleep.
 
-The power range is the number to land: **14 microwatts to 650 milliwatts**, set
-entirely by how much data is moving. That is three orders of magnitude below the
-sg2000, and it is what "power scales with data movement, not with frequency"
-looks like in silicon.
+**The effective rate** is worth having ready, because "no clock" invites the
+question. From the G144A12 chip reference §5.3, at 1.8 V and 22 °C, a basic
+opcode takes 1.3 ns minimum, 1.4 ns typical, 1.65 ns maximum. Inverted: about
+770 / 715 / 605 MHz per node. The headline 96 GOPS is 144 nodes at roughly
+667 MOPS each. It is not a frequency you can point at — each node runs at
+whatever its own logic settles at, adapting to voltage, temperature, process
+variation and ageing — but ~700 MHz is the right order of magnitude.
+
+**The power argument is the real one.** 650 mW is the *full-activity* figure;
+the floor is 14 µW. A synchronous design cannot do that, because a global clock
+clocks every flop on the die every cycle whether or not it has work to do, and
+the clock tree itself burns power distributing the edge. Here an idle node costs
+only leakage. That is activity-proportionality at 144-way granularity, and it is
+what a clock tree fundamentally cannot give you.
+
+Be careful with the ops-per-watt comparison, though: 96 GOPS of 18-bit stack
+operations is not 13.3 TFLOPS of FP32 FMA. On integer ops the GA144 is roughly
+two orders of magnitude better per watt than a server CPU, not four — still
+remarkable, and the gap comes from having no clock tree and doing almost nothing
+per operation.
 
 Each node has 64 words of RAM and 64 words of ROM. Sixty-four words. Programs
 have to be *spread across nodes* and communicate by blocking reads and writes to

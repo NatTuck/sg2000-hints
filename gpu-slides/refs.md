@@ -103,7 +103,7 @@ T1).
 | **Connection Machine CM-2** | 1987 | 65,536 one-bit processors, no branches. The width axis at its limit |
 | **Goodyear MPP** | 1983 | 16,384 bit-serial PEs doing Landsat imagery. The GPU's workload, 40 years early |
 | **Cell BE** | 2005 | 8 SPEs with local stores and explicit DMA, no caches. "Expose" taken to its limit; shipped in the PS3 |
-| **GreenArrays GA144** | 2010 | 144 asynchronous cores and **no clock tree at all** |
+| **GreenArrays GA144** | 2011 | 144 asynchronous cores and **no clock tree at all**; ~700 MHz per node (1.4 ns per opcode), 96 GOPS aggregate, 14 µW–650 mW |
 | **Groq TSP** | 2020 | Static compiler scheduling, no caches. Itanium's bet, revived and shipping |
 
 ::: {.notes}
