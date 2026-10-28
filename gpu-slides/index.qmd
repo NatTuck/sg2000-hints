@@ -465,53 +465,46 @@ not die with it; it went into graphics hardware, where the data was uniform.
 
 ## What We Bought {.smaller}
 
-One MI50, from its own numbers:
+One MI50 against the CPU it shares a box with — same machine, adjacent years:
 
-| | |
-|---|---|
-| Lanes | 60 CUs × 64 = **3,840** |
-| Clock | 1.725 GHz |
-| FMA throughput | 3,840 × 2 flops × 1.725 GHz = **13.3 TFLOPS** FP32 |
-
-Against celedyr — the 24-core Opteron box from the multicore lecture:
-
-| | |
-|---|---|
-| Cores | 24, in **12 modules** |
-| FPU | one **256-bit FPU per module**, shared by both cores |
-| Per core | one 128-bit half = 8 flops/cycle |
-| Throughput | 12 × 16 × 2.4 GHz = **≈ 0.46 TFLOPS** <span class="quoted">derived</span> |
+| | **EPYC 7642** (48 cores) | **one MI50** (60 CU) |
+|---|---|---|
+| Clock | 2.3 GHz base | 1.725 GHz |
+| FP32 peak | 48 × 32 × 2.3 = **3.5 TFLOPS** | **13.3 TFLOPS** |
+| Memory bandwidth | 205 GB/s | **1,024 GB/s** |
+| Power | 225 W | 300 W |
+| FP32 per watt | 15.6 GFLOPS/W | **44 GFLOPS/W** |
 
 ::: {.fragment}
-Twenty-four cores, but **twelve FPUs**. That 0.46 TFLOPS needs *both* cores in
-every module doing dense FP work — put one thread on a module and you get half.
-:::
-
-::: {.fragment}
-**29×** in one card, against a two-socket server. And that is the *easy*
-comparison — it assumes the work is already perfectly parallel and dense.
+**~4×** the FLOPs and **~5×** the bandwidth — and nearly **3×** better per watt.
+Kraken's four cards together are ~15× its CPU.
 :::
 
 ::: {.notes}
-The 29× is deliberately the optimistic case, and the next slide is the bill.
+Compare like with like: this is the CPU and the GPU in the *same box*, one year
+apart. That is the only fair comparison available on our hardware, and the answer
+is a much more modest number than the folklore suggests — which is the point.
 
-The module structure is the thing to get right, because it is the same lesson as
-"a CU is not a core" arriving from the other direction. A Bulldozer module is two
-integer cores sharing **one** 256-bit FlexFPU built from two 128-bit FMACs. Each
-core gets one half, so 8 flops/cycle per core — and there are twelve FPUs for
-twenty-four cores, not twenty-four.
+The CPU arithmetic: a Zen 2 core has **two 256-bit FMA units**, so 16 floats × 2
+flops = 32 flops/cycle per core. 48 cores × 32 × 2.3 GHz = 3.5 TFLOPS. At a 3 GHz
+sustained clock it would be 4.6, so this end is conservative.
 
-The arithmetic is unchanged: 12 modules × 16 flops/cycle = 192 flops/cycle, same
-as 24 cores × 8. But the *peak requires two FP threads per module*. One thread
-alone reaches half of it, which is why this part was so bad at exactly the dense
-FP work the GPUs were about to eat.
+Note the clock asymmetry is stacked *against* the GPU: base clock for the CPU,
+boost clock for the GPU. The real ratio is probably a little better than 4×.
 
-Careful with codenames: SledgeHammer is K8, where every core had its own FPU. The
-shared-FPU machine is Bulldozer/Interlagos, which is what is on celedyr.
+The row that matters is the last one. **44 versus 16 GFLOPS per watt** is why
+accelerators exist — not the peak FLOPs, which are within a factor of four. The
+per-watt advantage is what survives every fairness objection.
 
-Note the honesty marker on the Opteron number: it is a paper calculation from
-module count, clock, and vector width, not a benchmark. If you want the real
-number, run it — that is a good lab exercise.
+And be honest about the shape of the win: 4× the FLOPs is not 29×. The large
+numbers you see quoted usually span a decade and two machines. Part VI makes the
+same point from the other end — the vector add spends 98% of its time on the bus,
+so the compute advantage was never the whole story.
+
+If someone asks about the old dual-Opteron box from the multicore lecture: don't
+use it. It is a 2011 CPU on a different machine, and comparing it to a 2018 GPU
+is not a comparison, it is a decade. That is exactly the mistake this slide
+exists to avoid.
 :::
 
 ## What We Paid {.smaller}
@@ -2154,8 +2147,8 @@ The lesson is Amdahl's law applied to a link rather than to a core. If you canno
 amortise the crossing, do not cross. Do the work on the CPU, or restructure so
 the data is already resident.
 
-This also explains why the "GPU is 29× faster" claim from Part I is so fragile:
-it assumes the data is already there.
+This also explains why the "~4× the FLOPs" claim from Part I is so fragile: it
+assumes the data is already there, and for a single vector add it is not.
 :::
 
 ## GPU vs TPU vs HPU {.smaller}

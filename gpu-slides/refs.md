@@ -594,7 +594,7 @@ starts being data supply.
 
 - MI50: 60 CU, 3,840 lanes, 13.3 TFLOPS, 1,024 GB/s HBM2 — vendor.
 - Polaris 10 ~256 GB/s, RX 7600 ~288 GB/s — vendor. pegasus bandwidth **not measured**.
-- Opteron 6234 ≈ 0.46 TFLOPS — 12 Bulldozer modules × 16 flops/cycle × 2.4 GHz; 24 cores, 12 FPUs.
+- EPYC 7642 ≈ 3.5 TFLOPS — 48 cores × 32 flops/cycle × 2.3 GHz (Zen 2: 2 × 256-bit FMA).
 - Gaudi2 24 × 100 GbE RoCE, 2.45 TB/s — vendor; the 48 MACs are measured.
 - PCIe generations, and Vega 20 CU internals — vendor specs.
 
