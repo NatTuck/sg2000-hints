@@ -73,6 +73,45 @@ The analogue of AMAT. Any system sustaining a rate across a latency needs a
 buffer of latency × rate.
 :::
 
+## Four Attempts at a Throughput Machine {.smaller}
+
+| | SIMD width | Threads per issue slot | Outcome |
+|---|---|---|---|
+| Itanium (2001) | 3-wide VLIW | 1 | lost — no parallelism to fill the width |
+| SPARC T2 (2007) | 1 (scalar) | 8 | lost — too narrow to matter |
+| Knights Landing (2016) | 32 (2 × AVX-512) | **2** | lost — wide, nothing to hide latency with |
+| GPU (2006–) | 16–32 | **10–16** | **won** |
+
+Each failure got one axis right. KNL got both axes and forgot the **depth** — and
+it was also the one that kept x86 compatibility, which proves compatibility was
+never the problem.
+
+**The examinable claim:** thread depth per issue slot is the design, and
+`threads = latency ÷ work` is the arbiter.
+
+## Archaeology {.smaller}
+
+*Not examinable — for the story only.*
+
+| Machine | Year | Why it is here |
+|---|---|---|
+| **Tera MTA** | 1999 | 128 thread contexts per CPU, **no data caches**. The GPU's latency strategy in a CPU body, 20 years early |
+| **Connection Machine CM-2** | 1987 | 65,536 one-bit processors, no branches. The width axis at its limit |
+| **Goodyear MPP** | 1983 | 16,384 bit-serial PEs doing Landsat imagery. The GPU's workload, 40 years early |
+| **Cell BE** | 2005 | 8 SPEs with local stores and explicit DMA, no caches. "Expose" taken to its limit; shipped in the PS3 |
+| **GreenArrays GA144** | 2010 | 144 asynchronous cores and **no clock tree at all** |
+| **Groq TSP** | 2020 | Static compiler scheduling, no caches. Itanium's bet, revived and shipping |
+
+::: {.notes}
+The through-line: every machine that hides latency with threads eventually looks
+like a GPU. Tera got there first and had no graphics workload to carry it.
+
+Groq closes the loop — the same bet that made Itanium a punchline for twenty
+years is a product now, because inference is a workload where the schedule is
+knowable at compile time. An idea is not good or bad on its own; it is good or
+bad *for a workload*.
+:::
+
 ## The Fabric Ladder {.smaller}
 
 | Boundary | Width | Status |

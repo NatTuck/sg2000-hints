@@ -160,3 +160,25 @@ $code-block-font-size: 0.78em;
   padding: 0.6em 0;
   color: #12365f;
 }
+
+/* Archaeology asides: a deliberately different colour and a left rule, so
+   students can tell story-time from examinable material at a glance. */
+.reveal h2.arch {
+  color: #b45309;
+  border-left: 7px solid #b45309;
+  padding-left: 0.45em;
+}
+
+.reveal .arch-tag {
+  display: inline-block;
+  font-size: 0.42em;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: #b45309;
+  padding: 0.18em 0.6em;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin-left: 0.6em;
+}

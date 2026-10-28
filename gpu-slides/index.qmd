@@ -24,29 +24,36 @@ format:
 
 ## Roadmap {.smaller}
 
-Two lectures. The first is the **machine**; the second is the **card** and the
-**model**.
+Three lectures. The first is the **idea**, the second is the **machine**, the
+third is the **card** and the **model**.
 
-**Lecture 1 — how a GPU is built**
+**Lecture 1 — why a throughput machine at all**
 
 1. **Latency vs throughput** — the bet, and the one equation that prices it
 2. **SIMT** — how 64 lanes share a single program counter
+3. *(with detours into the machines that tried this first)*
+
+**Lecture 2 — how a GPU is built**
+
 3. **Memory, inverted** — the hierarchy with the register file on top
 4. **The machine** — from one compute unit to a whole card
 
-**Lecture 2 — how a GPU is attached and programmed**
+**Lecture 3 — how a GPU is attached and programmed**
 
 5. **PCI and PCIe** — why a GPU is a card and not a die
 6. **Programming** — what the rewrite actually costs
 7. Synthesis
 
 ::: {.notes}
-Say the split out loud on the first slide; students plan around it. Lecture 1 is
-the architecture lecture and stands alone. Lecture 2 is the systems lecture, and
-it is the one that will feel most like the multicore material.
+Say the split out loud on the first slide; students plan around it.
 
-The through-line for both halves is the same question: *where does the
-accelerator sit relative to memory, and whose memory is it?*
+Lecture 1 is the argument and stands alone. Lecture 2 is the architecture.
+Lecture 3 is the systems lecture, and it is the one that will feel most like the
+multicore material.
+
+The archaeology slides are marked in amber and are *not* examinable. Say that
+explicitly on the first one — it buys goodwill from the half of the room that
+wants the story, and the half that wants the exam will forgive it.
 :::
 
 # Part 0 — Framing
@@ -70,10 +77,10 @@ So there were three ways to spend the transistors, and we walked all three:
 3. **Add specialised instructions** — vector units, crypto, video decode.
 
 ::: {.fragment}
-There is a fourth, and it is the subject of the next two lectures:
+There is a fourth, and it is the subject of the next three lectures:
 
 > Stop trying to make one instruction stream finish sooner. Build a machine that
-> switches to a different one instead.
+> runs thousands of them at once, and issues from whichever can make progress.
 :::
 
 ::: {.notes}
@@ -112,7 +119,7 @@ Every mechanism we meet later hangs off one of these cells.
 The row that matters most is "breaks when". A CPU degrades gracefully — a cache
 miss costs you cycles. A GPU degrades catastrophically — a divergent branch or a
 strided access can cost you 16×. That asymmetry is why GPU programming is hard,
-and we come back to it in Lecture 2.
+and we come back to it in Lecture 3.
 :::
 
 ## Every Boundary Is a Fabric {.smaller}
@@ -137,7 +144,7 @@ narrowest one a program is forced to cross.
 :::
 
 ::: {.notes}
-This is the spine of both lectures. Write it on the board at the start and point
+This is the spine of all three lectures. Write it on the board at the start and point
 at it every time a new number appears.
 
 The last two rows are the interesting ones. The CPU's own path to memory is not
@@ -153,7 +160,7 @@ distinction honest all the way through.
 
 - **No graphics.** No shaders, no rasterisation, no texture mapping. A GPU is a
   computer that happens to be good at triangles.
-- **No CUDA or HIP tutorial.** The programming model is Lecture 2's last part.
+- **No CUDA or HIP tutorial.** The programming model is Lecture 3's last part.
 - **No cache mechanics.** We assume the memory-hierarchy deck.
 - **The TPU gets one slide.** It has its own lab.
 
@@ -161,7 +168,7 @@ distinction honest all the way through.
 Two questions we *will* answer:
 
 1. **How do you build a machine with 3,840 arithmetic lanes?** (Lecture 1)
-2. **How do you feed it?** (Lecture 2)
+2. **How do you feed it?** (Lecture 3)
 :::
 
 ::: {.notes}
@@ -226,7 +233,57 @@ currently running.
 
 Say it plainly: a GPU is not a fast processor. It is a machine for holding an
 enormous number of half-finished threads, and the throughput comes from having so
-many that something is always ready.
+many that the scheduler always finds a ready one — not because it switches to
+them, but because they were never switched out.
+:::
+
+## Four Attempts at a Throughput Machine {.smaller}
+
+The GPU is not the first machine to make this bet. It is the first one to win it.
+
+| | SIMD width | Threads per issue slot | Outcome |
+|---|---|---|---|
+| **Itanium** (2001) | 3-wide VLIW | 1 | lost — no parallelism to fill the width |
+| **SPARC T2** (2007) | 1 (scalar) | 8 | lost — too narrow to matter |
+| **Knights Landing** (2016) | 32 (2 × AVX-512) | **2** | lost — wide, with nothing to hide latency with |
+| **GPU** (2006–) | 16–32 | **10–16** | **won** |
+
+::: {.fragment}
+Each failure got exactly **one** axis right. Itanium had width and no threads.
+T2 had threads and no width. KNL had both — and forgot the depth.
+:::
+
+::: {.fragment}
+KNL is the control experiment. It fixed the one complaint that killed the other
+two — *stay x86, keep your software* — and still lost. **Compatibility was never
+the problem.**
+:::
+
+::: {.notes}
+This is the archaeology payoff slide, and it is examinable even though the
+machines are not: the *axes* are the point.
+
+**Itanium** (2001) was EPIC: 128-bit bundles of three instructions, no
+out-of-order, no hardware speculation, and the compiler statically schedules
+everything. It failed because the compiler cannot schedule around a cache miss it
+cannot predict. It starved on lack of parallelism.
+
+**SPARC T2** (2007) is the opposite: 8 cores × 8 threads, in-order, single issue,
+one scalar lane each. It had threads and no width, and it kept coherent SMP
+memory and a general-purpose ISA, so it lost to Xeons at single-thread while not
+being wide enough to win at throughput.
+
+**Knights Landing** (2016) had 72 Atom-derived cores, 2 threads each, and two
+AVX-512 units per core — so 32 lanes wide, with **2** threads per issue slot.
+That is nothing against a 500-cycle memory latency. It worked only where the
+prefetchers worked: dense linear algebra. Sparse, graph, branchy code fell off a
+cliff.
+
+The GPU has 10 wavefronts or 16 warps per slot *on top of* 16–32 lanes. That
+product is the whole design, and Little's Law is the arbiter.
+
+If a student asks "so which axis matters more" — depth, for latency, and the
+KNL result is the evidence.
 :::
 
 ## The Arithmetic of Hiding {.smaller}
@@ -290,6 +347,51 @@ A MI50 at full occupancy holds 60 CUs × 40 wavefronts × 64 lanes = **153,600
 threads**. That is Little's Law answered in silicon.
 :::
 
+## Archaeology: Tera MTA {.smaller .arch}
+
+Tera Computer Company, 1998. The purest thread-depth machine ever built.
+
+| | Tera MTA |
+|---|---|
+| Thread contexts per processor | **128**, each with its own register set |
+| Thread switch | **every cycle**; blocked threads are skipped |
+| Data caches | **none at all** |
+| Memory | "full/empty" bits on every word — sync in hardware |
+| First system | 4 processors, **512 threads**, gallium arsenide, at SDSC |
+
+::: {.fragment}
+Little's Law, taken to its conclusion and built. A GPU would recognise this
+machine immediately: it is the same argument, twenty years early, in a CPU.
+:::
+
+::: {.notes}
+**Archaeology slide — not examinable.** Flag that out loud the first time.
+
+This is the best single artefact for the argument in this lecture. Tera looked at
+memory latency, decided caching was a losing game, and gave every processor 128
+register sets so there was always a runnable thread. The hardware switches thread
+**every cycle** and simply skips the blocked ones. No data cache. None.
+
+That is worth pausing on, because it is the answer to a question from earlier in
+the lecture: switching costs nothing *because all 128 register sets are already
+resident*. There is no save and no restore. The same architectural fact as a
+GPU's 256 KB register file.
+
+The full/empty bits are a lovely extra: every memory word carries a state bit, so
+synchronisation is a memory operation rather than a lock. A thread reading an
+"empty" word simply blocks until someone writes it.
+
+Two details worth having ready. The first MTA used **gallium arsenide** — a
+material nobody builds CPUs from — and shipped four processors to the San Diego
+Supercomputer Center, 512 threads in total. And the history is the opposite of
+the usual telling: Tera did not die and get bought by Cray; in 2000 Tera bought
+the Cray Research division from SGI and renamed *itself* Cray Inc.
+
+The line to leave them with: **every machine that hides latency with threads
+eventually looks like a GPU.** Tera got there first and had no graphics workload
+to carry it.
+:::
+
 ## One CU Is Not One Core {.smaller}
 
 | | **CPU core** (Zen 5) | **GPU CU** (Vega 20) |
@@ -312,6 +414,42 @@ The "2 resident threads" for a CPU is the SMT width. That contrast — 2 versus
 Careful with the word "core". Vendors use it loosely: AMD calls a CU a CU, NVIDIA
 calls it an SM, and both are closer to "a cluster of 16 cores that share a
 scheduler" than to a CPU core. Say "compute unit" and mean the Vega 20 thing.
+:::
+
+## Archaeology: The Connection Machine {.smaller .arch}
+
+Thinking Machines CM-2, 1987. The width axis taken to its conclusion.
+
+| | CM-2 |
+|---|---|
+| Processors | **65,536**, one bit each |
+| Interconnect | hypercube |
+| Branches | **none** — no per-processor control flow at all |
+| Communication | "news" — routing between processors |
+
+::: {.fragment}
+A one-bit ALU is the most complete possible statement of "spend everything on
+width". And it is also why the machine could not survive: real data is not
+uniformly shaped.
+:::
+
+::: {.notes}
+**Archaeology slide — not examinable.**
+
+The CM-2 is the purest SIMD machine ever sold: 65,536 single-bit processors, one
+instruction driving all of them, and *no branches whatsoever*. Where a GPU has an
+exec mask, the CM-2 had nothing — you could not branch per processor, so the
+programmer had to express everything as uniform data movement. The "news" network
+was how processors exchanged values.
+
+That is the same trade as Part II's divergence slide, taken to its limit: with no
+per-lane control flow you never pay a divergence penalty, and you also cannot
+write anything irregular.
+
+The ending is the instructive part. Thinking Machines' next machine, the CM-5
+(1991), abandoned SIMD for MIMD with a fat-tree network — the company pivoting
+away from its own thesis — and the company was gone by 1994. The SIMD idea did
+not die with it; it went into graphics hardware, where the data was uniform.
 :::
 
 ## What We Bought {.smaller}
@@ -362,12 +500,12 @@ accelerator.
 ::: {.fragment}
 > The CPU hides latency from the programmer. The GPU makes the programmer
 > responsible for it. That trade is the entire programming model, and it is why
-> Lecture 2 exists.
+> Lecture 3 exists.
 :::
 
 ::: {.notes}
 End Part I here and take questions. The four bullets are the syllabus for
-Lecture 2, so flag them as such — students who stay for the second lecture will
+Lecture 3, so flag them as such — students who stay for the third lecture will
 see each one turned into a mechanism.
 :::
 
@@ -539,6 +677,41 @@ The 64× figure is the worst case where every lane takes a different arm. Real
 code is usually much better, which is exactly why the bad cases are surprising.
 :::
 
+## Archaeology: The Goodyear MPP {.smaller .arch}
+
+Massively Parallel Processor, 1983. Built for NASA Goddard to process Landsat
+satellite imagery.
+
+| | MPP |
+|---|---|
+| Processing elements | **16,384**, one bit each |
+| Shape | 128 × 128 array |
+| Workload | satellite images |
+| Control flow | none per element |
+
+::: {.fragment}
+This is a GPU doing a GPU's job — forty years early. The demand for a throughput
+machine did not appear in 2006; it appeared as soon as there were more pixels
+than a CPU could chew.
+:::
+
+::: {.notes}
+**Archaeology slide — not examinable.**
+
+The MPP is the answer to "why do we even want this machine?" It was not built for
+games or neural nets. It was built because Landsat was producing satellite images
+faster than they could be processed, and image processing is embarrassingly
+parallel — exactly the workload shape a GPU would later be built for.
+
+Note the shape: 128 × 128 with a one-bit ALU, and the array physically matched
+the image grid. When the data structure and the machine's topology agree, you get
+the CM-2's best case.
+
+The interesting claim to make: the *workload* is older than the hardware by four
+decades. What changed in 2006 was not that someone discovered parallelism — it
+was that a mass-market product (graphics) finally paid for the silicon.
+:::
+
 ## SIMT vs Vectors {.smaller}
 
 The C906 on our own boards has **RVV** vector instructions. A GPU has **SIMT**.
@@ -596,9 +769,33 @@ masks explicitly; SIMT hides them, which is friendlier until it is expensive.
 The block-size point is worth a concrete number: launch 100 threads on 64-wide
 hardware and you get two waves, the second of which is 36/64 empty. That is 22%
 of the machine doing nothing, from a one-line mistake.
+:::
 
-Close Part II here. Part III is where the memory system turns out to be upside
-down, and it is the most surprising part of Lecture 1.
+## End of Lecture 1 {.smaller}
+
+What we established:
+
+1. **The bet.** A GPU spends its area on concurrency instead of latency.
+2. **Little's Law.** Threads = latency ÷ work. That is the whole design — and it
+   is why thread *depth* matters more than SIMD width.
+3. **SIMT.** 64 lanes share one PC; divergence is the price of not having a
+   predictor.
+4. **Four attempts, one winner.** Itanium, T2 and Knights Landing each got one
+   axis right. The GPU got both, and promised nobody compatibility.
+5. **The workload decides.** Graphics supplied the parallelism for free.
+
+::: {.fragment}
+**Lecture 2 asks the obvious next question:** fine — so how do you actually build
+one of these? From a single compute unit to a whole card.
+:::
+
+::: {.notes}
+End here. The five claims are the examinable summary of Lecture 1; the archaeology
+slides in this lecture were not.
+
+If you have time for one question, ask: *why did KNL fail when it had width,
+threads and x86?* The answer is the depth number, and it is the whole lecture in
+one sentence.
 :::
 
 # Part III — Memory, Inverted
@@ -664,6 +861,43 @@ course's later labs.
 
 The cost is real: get the staging wrong and you are slower than the naive
 version. That is the trade for predictability.
+:::
+
+## Archaeology: Cell {.smaller .arch}
+
+Sony/Toshiba/IBM, 2005. "Expose" taken to its limit — and shipped in a games
+console.
+
+| | Cell BE |
+|---|---|
+| Cores | 1 PowerPC PPE + **8 SPEs** |
+| Per SPE | **256 KB local store, no cache** |
+| Data movement | explicit **DMA** in and out |
+| SIMD width | 128-bit |
+
+::: {.fragment}
+Every load and store is a DMA you wrote yourself. This is the LDS argument from
+the previous slide, with the cache deleted rather than demoted.
+:::
+
+::: {.notes}
+**Archaeology slide — not examinable.**
+
+Cell is the cleanest historical proof of the "expose, don't hide" claim, because
+it went further than any GPU: the SPEs have no cache *at all*, only a 256 KB
+scratchpad, and all data movement is explicit DMA. You do not get a cache miss;
+you get a DMA you forgot to issue.
+
+It shipped in the PlayStation 3, so students have a hook. And it is a good
+example of a design that was technically admired and commercially painful: the
+programming model was so demanding that most PS3 titles used only the PPE and
+left the SPEs idle.
+
+That is the same failure the GPU would have had — except the GPU had no
+alternative but to make it work, because graphics was the only thing it did.
+
+Worth noting: the SPEs were 128-bit SIMD with 128 registers, so the "wide and
+shallow" critique applies here too.
 :::
 
 ## The Third Tier: GTT {.smaller}
@@ -1022,6 +1256,50 @@ That reframing is useful for the next lecture: a GPU is not exotic, it is the
 specialisation pattern we already studied, with the specialisation made general.
 :::
 
+## Archaeology: GreenArrays {.smaller .arch}
+
+GA144, 2011. The one design point with **no clock tree at all**.
+
+| | GA144 |
+|---|---|
+| Cores | **144**, each an independent asynchronous computer |
+| Clock | **none** — each node runs when a neighbour gives it work |
+| Per node | 18-bit stack machine, 64 words RAM + 64 words ROM |
+| Power | **14 µW to 650 mW**, depending on activity |
+| Language | arrayForth |
+
+::: {.fragment}
+Compare the sg2000: one 25 MHz crystal, eight PLLs, ninety leaf clocks, ~3 W.
+GreenArrays deleted the tree — power is spent only where data actually moves.
+:::
+
+::: {.notes}
+**Archaeology slide — not examinable.**
+
+This is the counterpoint to the clocks material in the Beyond the CPU deck. The
+sg2000 has one crystal, eight PLLs and about ninety gated leaf clocks, and every
+one is a decision someone made. GreenArrays made a different decision: no clock,
+144 nodes in an 18 × 8 array, each of which wakes when a neighbour hands it a
+value, computes, and goes back to sleep.
+
+The power range is the number to land: **14 microwatts to 650 milliwatts**, set
+entirely by how much data is moving. That is three orders of magnitude below the
+sg2000, and it is what "power scales with data movement, not with frequency"
+looks like in silicon.
+
+Each node has 64 words of RAM and 64 words of ROM. Sixty-four words. Programs
+have to be *spread across nodes* and communicate by blocking reads and writes to
+neighbours, which means you route messages by hand and can deadlock yourself.
+
+Designed by Chuck Moore, who invented Forth, and programmed in arrayForth, which
+he also designed. The chip and the language were built for each other, which is
+either beautiful or a warning sign depending on your taste.
+
+The teaching point is narrow and real: **there is nothing inevitable about a
+clock tree.** It is a design choice with a power cost, and one shipping chip
+declined to pay it.
+:::
+
 ## The Command Processor {.smaller}
 
 How does the CPU tell the GPU to do something? Not by calling a function.
@@ -1131,7 +1409,7 @@ the protocol.
 :::
 
 ::: {.notes}
-This is the transition to Lecture 2 and it should be presented as a puzzle: why
+This is the transition to Lecture 3 and it should be presented as a puzzle: why
 would an on-die GPU need a bus address?
 
 The answer is that "PCIe" is two things — a physical link and a *configuration
@@ -1142,30 +1420,33 @@ registers are.
 That distinction (link versus protocol) is the thing to carry into Part V.
 :::
 
-## End of Lecture 1 {.smaller}
+## End of Lecture 2 {.smaller}
 
 What we established:
 
-1. **The bet.** A GPU spends its area on concurrency instead of latency.
-2. **Little's Law.** Threads = latency ÷ work. That is the whole design.
-3. **SIMT.** 64 lanes share one PC; divergence is the price.
-4. **The hierarchy is inverted.** Registers above L2, and the programmer manages
+1. **The hierarchy is inverted.** Registers above L2, and the programmer manages
    the middle.
-5. **The fabric is the machine.** A GPU is a SoC whose shader array is one block
-   of six.
+2. **GTT is the tier a CPU does not have.** GPU page tables can point at system
+   memory — which is unified memory, and which is free only when there is no bus
+   in between.
+3. **Occupancy is the AMAT.** `256 KB ÷ (64 × 4 × regs)`. Every optimisation
+   moves that one number.
+4. **A GPU is a SoC**, and the shader array is one block of six.
+5. **The command processor is the interface.** Doorbell, packets, fence — the CPU
+   never touches the data.
 
 ::: {.fragment}
-**Lecture 2 starts with a question this lecture raised:** if the iGPU is on the
+**Lecture 3 starts with a question this lecture raised:** if the iGPU is on the
 same die as the memory controller, why does it still need a bus address — and
 what does a *real* bus cost when there is one?
 :::
 
 ::: {.notes}
-End here. The five claims are the examinable summary of Lecture 1.
+End here. The five claims are the examinable summary of Lecture 2.
 
 Do not preview the PCIe material in detail — just leave the question. Students
 who go away thinking "why does the integrated GPU have a PCI address" will come
-back for Lecture 2.
+back for Lecture 3.
 :::
 
 # Part V — PCI and PCIe
@@ -1193,7 +1474,7 @@ two things you did not need before: a **physical link**, and a way to **find it*
 :::
 
 ::: {.notes}
-This is the framing slide for the whole of Lecture 2, and it is worth slowing
+This is the framing slide for the whole of Lecture 3, and it is worth slowing
 down for.
 
 The device tree callback is deliberate — they saw it in the boot deck, where the
@@ -1776,8 +2057,8 @@ Both failures are measurable on kraken with `rocprof` or the ROCm counters —
 that is a good lab.
 
 The third failure is the quiet one: a kernel with high register pressure has few
-resident wavefronts, so there is nothing to switch to when a load misses, and the
-latency is exposed no matter how well-shaped the accesses are.
+resident wavefronts, so no other warp is ready to issue when a load misses, and
+the latency is exposed no matter how well-shaped the accesses are.
 :::
 
 ## Occupancy vs Registers {.smaller}
@@ -1882,6 +2163,45 @@ you get data to them.
 
 # Part VII — Synthesis
 
+## Archaeology: Itanium's Revenge {.smaller .arch}
+
+Groq TSP, 2020. The bet that failed in 2001 — now shipping.
+
+| | Itanium (2001) | Groq TSP (2020) |
+|---|---|---|
+| Scheduling | static, compiler | **static, compiler** |
+| Out-of-order | none | **none** |
+| Caches | (present, but not the point) | **none** |
+| Why it failed/works | couldn't find the parallelism | **inference: the schedule is knowable** |
+
+::: {.fragment}
+Itanium lost because the compiler could not predict a cache miss. A neural net's
+shape is known at compile time — so the schedule really is static, and the bet
+that looked naive in 2001 looks obvious now.
+:::
+
+::: {.notes}
+**Archaeology slide — not examinable**, but it is the best ending the deck has.
+
+This closes the loop opened in Part I. Itanium's static scheduling failed because
+general-purpose code is unpredictable: a cache miss you cannot foresee wrecks a
+schedule computed at compile time. Groq's argument is that for inference, there
+are no surprises — the tensor shapes are fixed, there are no data-dependent
+branches worth the name, and the whole computation can be scheduled on the wire
+before it runs.
+
+So the same architectural bet, which was a punchline for twenty years, is now a
+product. That is not a vindication of Itanium; it is a reminder that "was this a
+good idea" is not a property of an idea. It is a property of an idea *and a
+workload*.
+
+Which is the deck's closing argument: **the architecture that wins is the one
+whose workload supplies what it needs.** T2 and Itanium and KNL all guessed wrong
+about where parallelism lives. The GPU guessed right because graphics handed it
+the answer, and Groq is the same bet placed again on a workload that finally
+cooperates.
+:::
+
 ## What We Actually Learned {.smaller}
 
 1. **The bet.** A GPU spends its area on concurrency, not latency. Everything
@@ -1904,10 +2224,10 @@ you get data to them.
 :::
 
 ::: {.notes}
-Read these as the examinable summary across both lectures. Each is a sentence a
+Read these as the examinable summary across all three lectures. Each is a sentence a
 student should be able to expand into a paragraph.
 
-Claim 6 is the one that took the whole of Lecture 2, and it is the one worth the
+Claim 6 is the one that took the whole of Lecture 3, and it is the one worth the
 most: they should leave able to look at any accelerator and ask "how does it get
 data, and how wide is that path" — and predict its programming model from the
 answer.
