@@ -75,7 +75,7 @@ buffer of latency × rate.
 
 ## Four Attempts at a Throughput Machine {.smaller}
 
-| | SIMD width | Independent streams | Outcome |
+| | Lanes per issue slot | Independent streams | Outcome |
 |---|---|---|---|
 | Itanium (2001) | 3-wide VLIW | 1 per core | lost — no parallelism to fill the width |
 | SPARC T2 (2007) | 1 (scalar) | 8 per core, 2 issue slots | lost — too narrow to matter |
@@ -93,13 +93,19 @@ Corrections worth knowing: KNL is **4-way SMT and out-of-order** (in-order is
 Knights Corner); T2 issues **up to 2 instructions per cycle**, not 1 (that is the
 T1).
 
+::: {.notes}
+Each failure got one axis right. KNL is the interesting one: it had width, 4-way
+SMT *and* out-of-order execution, plus x86 compatibility, and still lost. The GPU
+is the only one of the four that gave something up.
+:::
+
 ## Archaeology {.smaller}
 
 *Not examinable — for the story only.*
 
 | Machine | Year | Why it is here |
 |---|---|---|
-| **Tera MTA** | 1999 | 128 thread contexts per CPU, **no data caches**. The GPU's latency strategy in a CPU body, 20 years early |
+| **Tera MTA** | 1998 | 128 thread contexts per CPU, **no data caches**. The GPU's latency strategy in a CPU body, a decade early |
 | **Connection Machine CM-2** | 1987 | 65,536 one-bit processors, no branches. The width axis at its limit |
 | **Goodyear MPP** | 1983 | 16,384 bit-serial PEs doing Landsat imagery. The GPU's workload, 40 years early |
 | **Cell BE** | 2005 | 8 SPEs with local stores and explicit DMA, no caches. "Expose" taken to its limit; shipped in the PS3 |
@@ -129,7 +135,7 @@ bad *for a workload*.
 | PCIe 3.0 ×16 | 15.75 GB/s | quoted |
 | USB 2.0 (sg2000) | 0.06 GB/s | quoted |
 
-Five orders of magnitude. Every program is limited by the narrowest row it must
+Five and a half orders of magnitude. Every program is limited by the narrowest row it must
 cross.
 
 ::: {.notes}
@@ -332,7 +338,7 @@ dataflow engines. What makes a GPU a GPU is that its engine is programmable.
 
 **Submitting work:** driver builds a command buffer → writes its address into a
 ring → writes a **doorbell** (one MMIO store) → command processor dispatches →
-**fence** (a coherent write) signals completion.
+**fence** (an uncached write) signals completion.
 
 **Supervising the machine:** the GPU has its own MCU (RLC / MEC) that runs the
 scheduler, handles preemption and power, and answers the doorbell — the same role
@@ -504,9 +510,9 @@ SG2000 TRM, 75,894 lines of text:
 |---|---|
 | USB 2.0 | 60 MB/s |
 | 10/100 Ethernet | 12.5 MB/s |
-| One PCIe 3.0 ×16 slot | 15,750 MB/s |
+| One PCIe 4.0 ×16 slot | 31,500 MB/s |
 
-Best external link is **262× short** of one slot. Hence the on-die TPU instead of
+Best external link is **525× short** of one slot. Hence the on-die TPU instead of
 a GPU.
 
 **If it did have PCIe:** (1) the GPU becomes discoverable and the device tree
