@@ -520,10 +520,10 @@ def fig_vram_gtt():
     b.append(txt(X0 + 128, 85, "GTT path", 12.5, "start", DARK, bold=True))
     b.append(txt(1090, 92, "gap", 12, "end", GRAY, italic=True))
 
-    rows = [("celedyr", 256, 16, "16x", ACCENT),
-            ("kraken", 1024, 16, "64x", ACCENT),
+    rows = [("celedyr", 256, 8, "32x", ACCENT),
+            ("kraken", 1024, 31.5, "33x", ACCENT),
             ("vampire", 200, 200, "1x", GREEN),
-            ("typhon", 2450, 16, "~150x", ACCENT)]
+            ("typhon", 2450, 31.5, "78x", ACCENT)]
     for i, (name, vram, gtt, gap, col) in enumerate(rows):
         y = 110 + i * 80
         b.append(txt(X0 - 16, y + 30, name, 14.5, "end", DARK, bold=True))
@@ -541,7 +541,7 @@ def fig_vram_gtt():
         b.append(line(X(v), 430, X(v), 436, GRAY, 1.2))
         b.append(txt(X(v), 450, str(v), 11.5, "middle", GRAY))
     b.append(txt((X0 + X0 + XW) / 2, 466, "GB/s", 13, "middle", GRAY, italic=True))
-    b.append(txt(1090, 466, "three of the four share a 16 GB/s path", 12, "end", GRAY, italic=True))
+    b.append(txt(1090, 466, "celedyr is PCIe 2.0 x16; kraken and typhon are PCIe 4.0 x16", 12, "end", GRAY, italic=True))
     save("fig-vram-gtt.svg", W, H, b)
 
 # =====================================================================

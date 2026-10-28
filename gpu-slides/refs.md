@@ -224,10 +224,10 @@ GPU's address space — the **GTT**.
 
 | Machine | VRAM | GTT path | Gap |
 |---|---|---|---|
-| celedyr (dGPU) | 4 GiB, ~256 GB/s | system RAM over PCIe, ~16 GB/s | **16×** |
-| kraken (dGPU) | 32 GiB HBM2, 1,024 GB/s | over PCIe, ~16 GB/s | **64×** |
+| celedyr (dGPU) | 4 GiB, ~256 GB/s | over PCIe **2.0** x16, 8 GB/s | **32×** |
+| kraken (dGPU) | 32 GiB HBM2, 1,024 GB/s | over PCIe **4.0** x16, 31.5 GB/s | **33×** |
 | vampire (APU) | 16 GiB carveout, ~256 GB/s | 104 GiB, same fabric | **1×** |
-| typhon (HPU) | 96 GiB HBM2e, 2,450 GB/s | over PCIe 4, 31.5 GB/s | **~78×** |
+| typhon (HPU) | 96 GiB HBM2e, 2,450 GB/s | over PCIe 4.0 x16, 31.5 GB/s | **78×** |
 
 **The gap is the bus.** Unified memory is not a driver feature — it is the absence
 of a PCIe link between the two page-table hierarchies.
@@ -302,8 +302,9 @@ On vampire:
 | GTT aperture | **104 GiB** (111,669,149,696 B) |
 | GPU can address | **~120 GiB** |
 
-A ~100 GiB runtime allocation is routine. On celedyr — 4 GiB VRAM, a 256 MiB
-window, 16 GB/s — it is not a plan.
+A ~100 GiB runtime allocation is routine. On celedyr you can spill 100 GiB into
+GTT and the transfer is only seconds — but every later touch crosses the bus at
+1/32nd of local bandwidth.
 
 ::: {.notes}
 `mem_info_vis_vram_total` is 16 GiB and BAR Region 0 is 16 GiB. Same number, two
@@ -474,15 +475,17 @@ and not.
 | | |
 |---|---|
 | HBM2 (MI50) | 1,024 GB/s |
-| PCIe 3.0 ×16 | 15.75 GB/s |
-| Ratio | **64×** |
+| PCIe 4.0 ×16 | 31.5 GB/s |
+| Ratio | **33×** |
 
-Same 64× as the VRAM-vs-GTT gap in Part III — because it is the same link.
+Same 33× as the VRAM-vs-GTT gap on kraken in Part III — because it is the same
+link. celedyr, on a PCIe 2.0 slot, comes out at 32×; the ratio barely moves
+between generations because on-card and link bandwidth grew together.
 
 Consequence: **batch**, **keep resident**, never round-trip per element.
 
-Worked: moving 12 MB for the vector add costs 762 µs at 15.75 GB/s; the add costs
-12 µs at 1 TB/s. **98% transfer.**
+Worked: moving 12 MB for the vector add costs 381 µs at 31.5 GB/s (kraken's
+PCIe 4.0 x16); the add costs 12 µs at 1 TB/s. **97% transfer.**
 
 ::: {.notes}
 Amdahl applied to a link rather than a core.
@@ -524,7 +527,7 @@ a design point, not a feature list.
 | Example | sg2000 | celedyr, kraken | typhon (8 × Gaudi2) |
 | Bus | none | PCIe | PCIe **plus 48 MACs per card** (two per port) |
 | Wins | cost, power, latency | flexibility, scale | scale-out bandwidth |
-| Loses | no expansion | 64× wall | complexity, cost |
+| Loses | no expansion | the wall | complexity, cost |
 
 Gaudi2 answers the wall with Ethernet; NVIDIA with NVLink. Both say the same
 thing: **PCIe is not where the data goes.**

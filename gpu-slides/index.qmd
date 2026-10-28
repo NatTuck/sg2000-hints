@@ -505,7 +505,7 @@ per-watt advantage is what survives every fairness objection.
 
 And be honest about the shape of the win: 4× the FLOPs is not 29×. The large
 numbers you see quoted usually span a decade and two machines. Part VI makes the
-same point from the other end — the vector add spends 98% of its time on the bus,
+same point from the other end — the vector add spends 97% of its time on the bus,
 so the compute advantage was never the whole story.
 
 If someone asks about the old dual-Opteron box from the multicore lecture: don't
@@ -989,7 +989,7 @@ which is the next-but-one slide.
 | USB 2.0 | 0.06 GB/s |
 
 ::: {.fragment}
-Every *bandwidth* number in Lecture 2 is one of these rows. The **64×** between HBM2 and
+Every *bandwidth* number in Lecture 2 is one of these rows. The **~33×** between HBM2 and
 PCIe is the most important one, and Part V is about where it comes from.
 :::
 
@@ -1155,14 +1155,15 @@ On vampire:
 | GTT aperture | **104 GiB** |
 
 ::: {.fragment}
-So the GPU can address about **120 GiB**, and allocating **~100 GiB** at runtime is
-routine. On celedyr — 4 GiB of VRAM and a 256 MiB window at 16 GB/s — it is not
-a plan, it is a weekend.
+So the GPU can address about **120 GiB**, and allocating **~100 GiB** at runtime
+is routine. On celedyr you *can* spill 100 GiB into GTT — the transfer itself is
+only seconds. What kills it is that every later touch of that data crosses the
+bus at **1/32nd** of local bandwidth.
 :::
 
 ::: {.notes}
 This is the payoff of the GTT slide. The gap between VRAM and GTT *is the bus*:
-16–64× on a discrete card, 1× on an APU. So "can I allocate 100 GiB on the GPU" has
+32–78× on a discrete card, 1× on an APU. So "can I allocate 100 GiB on the GPU" has
 a different answer on each machine, and the answer is set entirely by whether
 there is a PCIe link in the middle.
 
@@ -1716,7 +1717,7 @@ memory, so the whole card is mappable. Same PCIe generation family as the others
 opposite default.
 
 So "resizable BAR" is the right name for it: a *policy*, negotiated at
-enumeration, and firmware-dependent. That is why the same 64× wall behaves
+enumeration, and firmware-dependent. That is why the same wall behaves
 differently on machines that look identical in a spec sheet.
 
 celedyr's driver pages through its window — move a chunk in, use it, move the
@@ -1874,12 +1875,19 @@ address is the address you use — which is what the physical-memory hint covers
 | | |
 |---|---|
 | HBM2 on the card | **1,024 GB/s** |
-| PCIe 3.0 ×16 to the card | **15.75 GB/s** |
-| Ratio | **~65×** |
+| PCIe 4.0 ×16 to the card | **31.5 GB/s** |
+| Ratio | **33×** |
 
 ::: {.fragment}
 That is the kraken number from Part III: the VRAM-versus-GTT gap on *that*
-machine is 64×. Not a coincidence — **it is the same link.**
+machine is 33×. Not a coincidence — **it is the same link.**
+:::
+
+::: {.fragment}
+And the ratio barely moves between generations. celedyr is a 2016 card in a
+**PCIe 2.0** slot; kraken is a 2018 card in a **PCIe 4.0** slot — 8 GB/s against
+31.5. Both come out at **32–33×**, because on-card bandwidth and link bandwidth
+grew in step.
 :::
 
 ::: {.fragment}
@@ -1895,9 +1903,29 @@ This is the intellectual centre of Part V and it should be connected explicitly
 to Part III. The "GTT cliff" and the "bandwidth wall" are one phenomenon seen
 from two directions.
 
+The numbers are measured, not quoted. `current_link_speed` and `max_link_speed`
+in sysfs give them without root:
+
+    celedyr  0000:04:00.0  max 8.0 GT/s   slot 0000:00:02.0  max 5.0 GT/s
+    kraken   0000:03:00.0  max 16.0 GT/s
+
+So celedyr is a Gen3 card negotiating down to a **Gen2** slot (5 GT/s × 16 = 8
+GB/s), and kraken is **Gen4** ×16 (31.5 GB/s).
+
+Two things to be careful about if anyone re-measures. First, a GPU link downshifts
+when idle — celedyr reads 2.5 GT/s on a quiet machine, which is PCIe 1.0 speeds
+but is not a Gen1 slot; the bridge's max is 5.0. Second, the *slot* and the *card*
+negotiate to the lower of the two, so `max_link_speed` on the card tells you what
+the card can do, not what it is doing.
+
+The stability is the interesting result. 32× and 33× on machines seven years and
+two PCIe generations apart means the wall is a property of the design point, not
+a coincidence of one machine. Gaudi2 breaks the pattern at 78× because HBM2e grew
+faster than Gen4 did.
+
 The consequence for programmers is the whole of Part VI: the reason you write
 kernels over large arrays instead of calling a function per element is not
-elegance, it is that every crossing costs 64×.
+elegance, it is that every crossing costs ~33×.
 
 And note the wall has not moved: PCIe 5.0 is 63 GB/s, against 2,450 GB/s on a
 Gaudi2. On the link each card actually has — PCIe 4.0 — the gap is still ~78× after twenty years.
@@ -1987,10 +2015,10 @@ Good discussion prompt: which of the five would you give up first?
 | Example | sg2000 | celedyr, kraken | typhon (8 × Gaudi2) |
 | Bus | none | PCIe | PCIe **plus** 48 MACs of Ethernet per card (two per port) |
 | Wins | cost, power, latency | flexibility, scale | scale-out bandwidth |
-| Loses | no expansion | 64× wall | complexity, cost |
+| Loses | no expansion | the wall | complexity, cost |
 
 ::: {.fragment}
-Gaudi2 is the most interesting column: its designers looked at the 64× wall and
+Gaudi2 is the most interesting column: its designers looked at the wall and
 concluded that **for training, the host link does not matter** — so they built the
 interconnect between accelerators instead. NVIDIA's answer to the same wall is
 NVLink. Both are saying the same thing: **PCIe is not where the data goes.**
@@ -2141,11 +2169,11 @@ Take the vector add from Part II and actually run it.
 
 | Step | Bytes | Time |
 |---|---|---|
-| Move a, b to VRAM; c back | 12 MB | **762 µs** at 15.75 GB/s |
+| Move a, b to VRAM; c back | 12 MB | **381 µs** at 31.5 GB/s |
 | The add itself | 12 MB | **12 µs** at 1 TB/s |
 
 ::: {.fragment}
-**98% of the runtime is the bus.** The arithmetic — the thing we spent three
+**97% of the runtime is the bus.** The arithmetic — the thing we spent three
 parts building a machine for — is a rounding error.
 :::
 
@@ -2159,9 +2187,9 @@ different claims.
 This is the most practically important calculation in the deck and it should be
 done on the board with the students.
 
-12 MB over PCIe 3.0 ×16 at 15.75 GB/s = 762 µs. The same 12 MB at HBM2 speed
-(1 TB/s) = 12 µs. So the transfer is ~63× the compute — the bandwidth wall
-wall, arriving as a runtime.
+12 MB over kraken's PCIe 4.0 ×16 link at 31.5 GB/s = 381 µs. The same 12 MB at
+HBM2 speed (1 TB/s) = 12 µs. So the transfer is ~32× the compute — the bandwidth
+wall, arriving as a runtime. On celedyr's Gen2 slot it would be 1.5 ms.
 
 The lesson is Amdahl's law applied to a link rather than to a core. If you cannot
 amortise the crossing, do not cross. Do the work on the CPU, or restructure so
@@ -2256,7 +2284,7 @@ cooperates.
    above cache; the programmer manages the middle.
 5. **Every boundary is a fabric.** The narrowest one you must cross sets your
    performance — and on our machines that ranges from 20 TB/s to 60 MB/s.
-6. **The bus is the design point.** PCIe's 64× wall is why GPUs batch, why Gaudi2
+6. **The bus is the design point.** PCIe's wall is why GPUs batch, why Gaudi2
    has 48 MACs, and why the sg2000 has no GPU at all.
 
 ::: {.fragment}
@@ -2287,7 +2315,7 @@ Claim 5 is the sentence to put on the exam.
   and what would you change in the data layout to fix it?
 - The sg2000 has no PCIe and no GPU. **Add one** — which of the five consequences
   from Part V would you give up first, and why?
-- Gaudi2 answers the 64× wall with Ethernet; NVIDIA answers it with NVLink.
+- Gaudi2 answers the wall with Ethernet; NVIDIA answers it with NVLink.
   **What would you do** if you had to attach 64 accelerators to one host?
 - Occupancy and register pressure pull in opposite directions. **Design an
   experiment** on kraken that would find the sweet spot.
