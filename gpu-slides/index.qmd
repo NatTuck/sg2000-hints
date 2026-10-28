@@ -215,9 +215,9 @@ Now delete the cost column and spend the same area differently.
 
 | Mechanism | Buys | Costs |
 |---|---|---|
-| No out-of-order | the scheduler *is* the out-of-order | one wavefront runs in lockstep |
+| In-order issue, no renaming | the scheduler *is* the out-of-order | lanes advance together |
 | Minimal prediction | fewer branches to predict | divergence must be masked (Part II) |
-| Tiny caches | area freed for lanes | every miss goes to DRAM |
+| Small caches | area freed for lanes | they catch reuse, not latency |
 | **256 KB register file per CU** | 40 resident wavefronts | no room for big caches |
 
 ::: {.fragment}
@@ -306,9 +306,9 @@ independent work before it needs the load.
 | 32 cycles | 16 |
 
 ::: {.fragment}
-A CPU answers this with a bigger out-of-order window — it looks for the 125
-cycles of work *inside* one thread. A GPU answers it by having 125 threads.
-Same arithmetic, different lever.
+A CPU answers this with **caches** — so the latency is usually nowhere near 500
+cycles — plus an out-of-order window that finds a few tens of cycles of work
+inside one thread. A GPU answers it by having 125 threads.
 :::
 
 ::: {.notes}
@@ -319,6 +319,13 @@ mystique.
 The honesty note: 500 cycles is an estimate, not a measurement. The exact number
 varies with the memory clock and the access pattern. What matters is the order of
 magnitude, and that it is far larger than the work available per thread.
+
+Be precise about the CPU side, because this room has already been told about
+out-of-order execution. A CPU's *first* answer to memory latency is the cache —
+most loads never reach DRAM, so the 500-cycle number rarely applies. The
+out-of-order window is the second answer, and it buys tens of cycles, not
+hundreds; a 500-entry window cannot manufacture 125 cycles of independent work
+out of a serial program. That is exactly why the caches are there.
 :::
 
 ## Little's Law {.smaller}
@@ -510,7 +517,7 @@ exists to avoid.
 ## What We Paid {.smaller}
 
 - **Single-thread performance is bad.** No speculation, no out-of-order, narrow
-  scalar path. A GPU is the slowest possible machine for one thread.
+  scalar path. For one thread, a GPU is far slower than the CPU next to it.
 - **Every access must be shaped.** A warp that touches 64 scattered addresses
   costs 64 transactions.
 - **The programmer must expose the parallelism.** The hardware will not find it.
@@ -540,25 +547,37 @@ for (int i = 0; i < n; i++)
     c[i] = a[i] + b[i];
 ```
 
-On a CPU this is a loop: one add at a time, maybe four if the compiler
-vectorises it, and the loop overhead is real.
+The loop is not the problem. With three or more ALUs and out-of-order issue, the
+compare, the increment and the branch fold into the same cycles as the body —
+`i++` is free.
 
 ::: {.fragment}
-On an MI50 we would like this to run on **3,840 lanes at once**. So: how do you
-turn one loop into 3,840 parallel lanes without the programmer writing 3,840
-programs?
+The problem is **width**. Fully vectorised with AVX-512, this does **16** elements
+per iteration. On an MI50 we want **3,840 lanes**. That is a **240×** gap that no
+amount of unrolling closes.
 :::
 
 ::: {.notes}
-Start with the boring version deliberately. The whole of SIMT is an answer to
-"how do we run this loop on 3,840 lanes", and it is easier to appreciate if the
-problem is on the board first.
+Be careful here, because the lazy version of this slide — "loops are slow because
+of loop overhead" — is false on a modern core. With three or more ALUs and
+out-of-order issue, the compare, the increment and the branch overlap the loads
+and the add. They cost essentially nothing. Do not tell this room otherwise; they
+already know better.
+
+So the honest statement of the problem is not overhead, it is **width**. One
+iteration touches 4, 8 or 16 floats depending on vector width; an MI50 has 3,840
+lanes. That gap is the thing SIMT has to close.
+
+If someone asks where 240× comes from: it is 3,840 lanes against 16 elements, so
+it compares issue width per cycle with vector width. It is an order-of-magnitude
+argument, not a benchmark.
 
 The answer is *not* "the compiler unrolls it 3,840 times". That would need 3,840
-instruction streams.
+instruction streams and the fetch unit would be the bottleneck — which is the
+next slide's argument.
 :::
 
-## One PC per Lane Is Impossible {.smaller}
+## One PC per Lane Doesn't Scale {.smaller}
 
 The obvious design: every thread is a real thread, with its own program counter,
 scheduled independently — a CPU core replicated 153,600 times.
@@ -827,7 +846,7 @@ one sentence.
 
 | Level | CPU (Zen 5) | GPU (MI50) |
 |---|---|---|
-| Registers | ~2 KB | **15.0 MiB** |
+| Registers | ~2 KB arch. | **15.0 MiB** |
 | L1 | 32–48 KB | 16 KB × 60 CUs = 960 KB |
 | L2 | 1 MB | 4 MB |
 | Last level | DRAM | HBM2, 32 GB |
@@ -1930,8 +1949,9 @@ Suppose we bolt a PCIe root complex onto the sg2000. Five things break:
    enumerate it. The DT would *shrink*.
 2. **Address space.** A 16 GiB BAR does not fit a 4 GB physical map. You would
    need a paging window — exactly celedyr's 256 MiB.
-3. **Coherency.** The C906's caches are not coherent with a PCIe device. Today
-   that problem does not exist, because everything DMA'd is on-die.
+3. **Coherency.** The C906's caches are not coherent with a PCIe device — and
+   the on-die DMA you already have is not coherent either. PCIe makes it worse:
+   the device now sits behind a non-coherent link, with an IOMMU in between.
 4. **Power and pins.** A PCIe PHY and SerDes on a ~3 W part, plus board area and
    a connector.
 5. **Amdahl.** A 1 GHz dual-issue C906 could not feed a GPU anyway. The
@@ -2002,7 +2022,7 @@ The GPU rewrite is **larger**.
 |---|---|---|
 | Parallel units | 2–24 | **thousands** |
 | You must find | independent work | **thousands of independent operations** |
-| Locks | avoid contention | **not available at all** |
+| Locks | avoid contention | **atomics, not blocking locks** |
 | Memory | keep the working set local | **shape every access** |
 | Failure mode | slow | **up to 64× slow** |
 
